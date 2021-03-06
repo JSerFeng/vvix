@@ -1,5 +1,5 @@
 {
-  "name": "vix",
+  "name": "vvix",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -12,5 +12,8 @@
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-node-resolve": "^5.2.0",
     "rollup-plugin-typescript2": "^0.30.0"
+  },
+  "dependencies": {
+    "typescript": "^4.2.3"
   }
 }

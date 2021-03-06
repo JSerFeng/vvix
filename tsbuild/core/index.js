@@ -1,3 +1,4 @@
+import { mount } from "../main/mount";
 export var createApp = function (app) {
     return {
         mount: function (mountName) {
@@ -13,6 +14,7 @@ export var createApp = function (app) {
                 }
             }
             mountName.innerHTML = "";
+            mountName.appendChild(mount(app));
         }
     };
 };

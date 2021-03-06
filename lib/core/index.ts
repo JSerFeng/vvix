@@ -1,7 +1,11 @@
-import { mount } from "../main/mount";
+import { mount } from "../renderer/mount";
 import { Vdom } from "../vdom/vdom";
 
-export const createApp = (app: Vdom) => {
+export interface FC<T = {}> {
+  (props: T): () => Vdom
+}
+
+export const createApp = (app: FC) => {
   return {
     mount(mountName: string | Element | null) {
       if (!mountName) {
@@ -16,7 +20,10 @@ export const createApp = (app: Vdom) => {
         }
       }
       mountName.innerHTML = ""
-      mountName.appendChild(mount(app))
+
+      const vdomCreator = app({})
+      const vdom = mount(vdomCreator())
+      mountName.appendChild(vdom)
     }
   }
 }

@@ -10,10 +10,11 @@ class VdomReference<T> {
 type InternalProps<T = unknown> = Partial<{
   ref: VdomReference<T>,
   parent: Vdom | null,
-  dom: Element
+  dom: Element,
+  style: CSSStyleDeclaration
 }>
 
-interface VdomProps extends InternalProps {
+export interface VdomProps extends InternalProps {
   [K: string]: any
 }
 
@@ -27,6 +28,7 @@ export class Vdom {
     this.props = props
     this.children = children
   }
+
 }
 
 export function createVdom(type: VdomType, props: VdomProps, children: Vdom[]): Vdom {
