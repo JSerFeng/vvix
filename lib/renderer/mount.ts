@@ -1,47 +1,123 @@
-import { Vdom } from "../vdom/vdom";
+import { ChildrenFlags, FC, VNode, VNodeChildren, VNodeFlags } from "../vdom/vdom";
+import { patch } from "./patch";
+import { Container } from "./render";
 
-export function mount(vdom: Vdom): HTMLElement {
-  const { type, props, children } = vdom
-  let node: HTMLElement
-  if (typeof type === "string") {
-    node = document.createElement(type)
-  } else if (type._V__Flag) {
-    node = mount(type)
-  } else {
-    node = document.createElement("div")
+export function mount(vnode: VNode | string, container: Container) {
+  if (typeof vnode === "string") {
+    mountTextChild(container, vnode)
+    return
+  } 
+  const { flags, childFlags, children } = vnode
+  if (flags & VNodeFlags.FC) {
+    mountFC(vnode, container)
+  } else if (flags & VNodeFlags.Element) {
+    mountElement(vnode, container)
   }
 
-  for (const key in props) {
+  /**mount children */
+  if (!(childFlags & ChildrenFlags.NoChildren)) {
+    if (childFlags & ChildrenFlags.Single) {
+      mountSingleChild(vnode, children as VNode)
+    } else if (childFlags & ChildrenFlags.Text) {
+      mountTextChild(vnode.el!, children as string)
+    } else if (childFlags & ChildrenFlags.Multiple) {
+      mountMultipleChildren(vnode, children as VNode[])
+    }
+  }
+}
+
+/**@TODO should handle the ref prop */
+const mountFC = (vnode: VNode, container: Container) => {
+  const { type, data } = vnode
+  vnode._instance._update = () => {
+    if (vnode._instance._mounted) {
+      const oldVNode = vnode._instance._vnode
+      const newVNode = vnode._instance._render!()
+      patch(newVNode, oldVNode, container)
+      vnode._instance._vnode = newVNode
+    } else { /**mount */
+      const render = (vnode._instance._render = (type as FC)(data))
+      const newVNode = vnode._instance._vnode = render()
+      mount(newVNode, container)
+      vnode.el = newVNode.el
+      vnode._instance._mounted = true
+      for (const cb of vnode._instance._onMount) {
+        cb()
+      }
+    }
+  }
+  vnode._instance._update()
+}
+
+const mountElement = (vnode: VNode, container: Container) => {
+  const { data } = vnode
+  const el = document.createElement(vnode.type as string)
+  for (const key in data) {
     switch (key) {
-      case "class":
       case "className":
-        node.className = props[key]
+      case "class":
+        el.className = data[key]
         break
       case "style":
-        const styles = props[key]!
-        for (const key in styles) {
-          node.style[key] = styles[key]
+        const styles = data["style"]
+        for (const styleProp in styles) {
+          /**@ts-ignore-next-line */
+          el.style[styleProp] = styles[styleProp]
         }
         break
       default:
-        node!.setAttribute(key, props[key])
+        /**事件 */
+        if (key.startsWith("on")) {
+          const eventName = key.split("on")[1].toLowerCase()
+          const eventCallback = data[key]
+          el.addEventListener(eventName, eventCallback)
+        }
     }
   }
-
-  if (children && children.length) {
-    mountChildren(node, children)
-  }
-
-  return node
+  vnode.el = el
+  container.appendChild(el)
 }
 
-const mountChildren = (parent: HTMLElement, children: (Vdom | "string")[]) => {
+const mountTextChild = (container: Container, child: string) => {
+  const textNode = document.createTextNode(child)
+  container.appendChild(textNode)
+}
+
+const mountSingleChild = (parent: VNode, child: VNode) => {
+  mount(child, parent.el!)
+}
+
+const mountMultipleChildren = (parent: VNode, children: VNode[]) => {
   for (const child of children) {
-    if (typeof child === "string") {
-      const text = document.createTextNode(child)
-      parent.appendChild(text)
-    } else {
-      parent.appendChild(mount(child))
+    mount(child, parent.el!)
+  }
+}
+
+export const unmount = (vnode: VNode, container: Container) => {
+  const { childFlags, flags, children } = vnode
+  if (flags & VNodeFlags.Element) {
+    container.removeChild(vnode.el!)
+  } else if (flags & VNodeFlags.FC) {
+    unmountFC(vnode, container)
+  }
+}
+
+const unmountFC = (vnode: VNode, container: Container) => {
+  const { childFlags, children } = vnode
+  const el = vnode.el!
+  if (childFlags & ChildrenFlags.Multiple) {
+    for (const child of children as VNode[]) {
+      if (child.flags & VNodeFlags.FC) {
+        unmountFC(child, el)
+      }
     }
   }
+
+  let onUnmounted = vnode._instance._onUnmount
+  if (onUnmounted.length) {
+    for (const cb of onUnmounted) {
+      cb()
+    }
+  }
+  container.removeChild(el)
 }

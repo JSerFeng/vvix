@@ -1,7 +1,7 @@
-import { Vdom } from "../vdom/vdom";
+import { VNode } from "../vdom/vdom";
 
-const updateQueue: WeakSet<() => Vdom> = new Set()
+const updateQueue: WeakSet<() => VNode> = new Set()
 
-export const readyToUpdate = (fn: () => Vdom) => {
+export const readyToUpdate = (fn: () => VNode) => {
   updateQueue.add(fn)
 }
