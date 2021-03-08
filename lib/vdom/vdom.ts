@@ -51,26 +51,28 @@ export class VNode {
   children: VNodeChildren
   childFlags: ChildrenFlags
   key: any = Symbol()
-
   _instance: {
-    _render: (() => VNode) | null
-    _mounted: boolean
+    _props: Record<any, any>,
+    _render: (() => VNode) | null,
+    _mounted: boolean,
     _vnode: VNode | null,
     _update: (() => void) | null,
     _onMount: (() => void)[],
     _onUnmount: (() => void)[],
-  } = {
-      _render: null,
-      _mounted: false,
-      _vnode: null,
-      _update: null,
-      _onMount: [],
-      _onUnmount: []
-    }
+  } | null = null
   constructor(type: string | FC, data: VNodeData, children: VNodeChildren) {
     this.type = type
     if (typeof type === "function") {
       this.flags = VNodeFlags.FC
+      this._instance = {
+        _props: data.props || {},
+        _render: null,
+        _mounted: false,
+        _vnode: null,
+        _update: null,
+        _onMount: [],
+        _onUnmount: []
+      }
     } else {
       this.flags = VNodeFlags.Element
     }
@@ -110,7 +112,7 @@ export class VNode {
   }
 }
 
-export function createVNode(type: string | FC, data: VNodeData, ...children: (VNode | string)[]): VNode {
+export function createVNode(type: string | FC, data: VNodeData | null, ...children: (VNode | string)[]): VNode {
   let _children: VNodeChildren = null
   if (children.length === 0) {
     _children = null

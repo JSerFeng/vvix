@@ -1,4 +1,4 @@
-import { ChildrenFlags, FC, VNode, VNodeChildren, VNodeFlags } from "../vdom/vdom";
+import { ChildrenFlags, FC, VNode, VNodeFlags } from "../vdom/vdom";
 import { patch } from "./patch";
 import { Container } from "./render";
 
@@ -29,24 +29,25 @@ export function mount(vnode: VNode | string, container: Container) {
 /**@TODO should handle the ref prop */
 const mountFC = (vnode: VNode, container: Container) => {
   const { type, data } = vnode
-  vnode._instance._update = () => {
-    if (vnode._instance._mounted) {
-      const oldVNode = vnode._instance._vnode
-      const newVNode = vnode._instance._render!()
+  vnode._instance!._update = () => {
+    if (vnode._instance!._mounted) {
+      const oldVNode = vnode._instance!._vnode
+      const newVNode = vnode._instance!._render!()
       patch(newVNode, oldVNode, container)
-      vnode._instance._vnode = newVNode
+      vnode._instance!._vnode = newVNode
     } else { /**mount */
-      const render = (vnode._instance._render = (type as FC)(data))
-      const newVNode = vnode._instance._vnode = render()
+      const _props = vnode._instance!._props
+      const render = (vnode._instance!._render = (type as FC)(_props))
+      const newVNode = vnode._instance!._vnode = render()
       mount(newVNode, container)
       vnode.el = newVNode.el
-      vnode._instance._mounted = true
-      for (const cb of vnode._instance._onMount) {
+      vnode._instance!._mounted = true
+      for (const cb of vnode._instance!._onMount) {
         cb()
       }
     }
   }
-  vnode._instance._update()
+  vnode._instance!._update()
 }
 
 const mountElement = (vnode: VNode, container: Container) => {
@@ -113,7 +114,7 @@ const unmountFC = (vnode: VNode, container: Container) => {
     }
   }
 
-  let onUnmounted = vnode._instance._onUnmount
+  let onUnmounted = vnode._instance!._onUnmount
   if (onUnmounted.length) {
     for (const cb of onUnmounted) {
       cb()

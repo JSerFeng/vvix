@@ -25,17 +25,19 @@
           this._isVNode = true;
           this.el = null;
           this.key = Symbol();
-          this._instance = {
-              _render: null,
-              _mounted: false,
-              _vnode: null,
-              _update: null,
-              _onMount: [],
-              _onUnmount: []
-          };
+          this._instance = null;
           this.type = type;
           if (typeof type === "function") {
               this.flags = exports.VNodeFlags.FC;
+              this._instance = {
+                  _props: {},
+                  _render: null,
+                  _mounted: false,
+                  _vnode: null,
+                  _update: null,
+                  _onMount: [],
+                  _onUnmount: []
+              };
           }
           else {
               this.flags = exports.VNodeFlags.Element;
@@ -151,6 +153,14 @@
   };
   const patchFC = (newVNode, oldVNode, container) => {
       newVNode._instance = oldVNode._instance;
+      const newData = newVNode.data;
+      const oldData = oldVNode.data;
+      for (const key in newData) {
+          if (newData[key] !== oldData[key]) {
+              /**@ts-ignore */
+              newVNode._instance._props[key] = newData[key];
+          }
+      }
       newVNode._instance._update();
   };
   const patchElement = (newVNode, oldVNode, container) => {
@@ -271,7 +281,8 @@
               vnode._instance._vnode = newVNode;
           }
           else { /**mount */
-              const render = (vnode._instance._render = type(data));
+              const _props = vnode._instance._props = data;
+              const render = (vnode._instance._render = type(_props));
               const newVNode = vnode._instance._vnode = render();
               mount(newVNode, container);
               vnode.el = newVNode.el;
@@ -411,8 +422,16 @@
       const app = document.querySelector("#app");
       app.vnode._instance._update();
   };
+  function Child(data) {
+      return () => createVNode("span", {
+          style: {
+              "color": "blue"
+          }
+      }, data.msg);
+  }
   function App() {
       let color = "red";
+      let msg = "AAA";
       let children = [
           createVNode("button", {
               onClick() {
@@ -429,6 +448,8 @@
       ];
       const clickHandler = () => {
           color = color === "red" ? "green" : "red";
+          msg += "A";
+          update();
       };
       return () => {
           return createVNode("div", {
@@ -436,7 +457,9 @@
                   color
               },
               onClick: clickHandler
-          }, ...children);
+          }, createVNode(Child, {
+              msg
+          }));
       };
   }
   const main = createVNode(App, {});

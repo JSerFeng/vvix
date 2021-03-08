@@ -1,4 +1,4 @@
-import { isSameVNode } from "lib/shared";
+import { isSameVNode, shallowEqual } from "../shared";
 import { ChildrenFlags, FC, VNode, VNodeData, VNodeFlags } from "../vdom";
 import { mount, unmount } from "./mount";
 import { Container } from "./render";
@@ -67,8 +67,21 @@ const patchProp = (
 }
 
 const patchFC = (newVNode: VNode, oldVNode: VNode, container: Container) => {
-  newVNode._instance = oldVNode._instance
-  newVNode._instance._update!()
+  if (bailout(newVNode, oldVNode)) {
+    return
+  }
+
+  newVNode._instance = oldVNode._instance!
+  const newData = newVNode.data
+  const oldData = oldVNode.data
+
+  for (const key in newData) {
+    if (newData[key] !== oldData[key]) {
+      /**@ts-ignore */
+      newVNode._instance._props[key] = newData[key]
+    }
+  }
+  newVNode._instance!._update!()
 }
 
 const patchElement = (newVNode: VNode, oldVNode: VNode, container: Container) => {
@@ -143,4 +156,11 @@ const patchChildren = (newVNode: VNode, oldVNode: VNode, container: Container) =
       }
     }
   }
+}
+
+const bailout = (v1: VNode, v2: VNode): boolean => {
+  const propsA = v1._instance!._props
+  const propsB = v2._instance!._props
+
+  return shallowEqual(propsA, propsB)
 }

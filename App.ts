@@ -4,11 +4,24 @@ import { Container } from './lib/renderer'
 
 const update = () => {
   const app = document.querySelector("#app") as Container
-  app.vnode!._instance._update!()
+  app.vnode!._instance!._update!()
+}
+
+function Child(data: any) {
+  return () => createVNode(
+    "span",
+    {
+      style: {
+        "color": "blue"
+      }
+    },
+    data.msg
+  )
 }
 
 function App(): () => VNode {
   let color = "red"
+  let msg = "AAA"
   let children: (VNode | string)[] = [
     createVNode("button", {
       onClick() {
@@ -31,6 +44,8 @@ function App(): () => VNode {
   ]
   const clickHandler = () => {
     color = color === "red" ? "green" : "red"
+    msg += "A"
+    update()
   }
   return () => {
     return createVNode(
@@ -41,7 +56,9 @@ function App(): () => VNode {
         },
         onClick: clickHandler
       },
-      ...children
+      createVNode(Child, {
+        msg
+      }),
     )
   }
 }
