@@ -1,69 +1,45 @@
-import { createVNode, VNode } from './lib/vdom'
+import { createVNode as h, VNode } from './lib/vdom'
 import { createApp } from './lib/core'
-import { Container } from './lib/renderer'
+import { onMounted } from './lib/renderer'
+import { reactive } from 'lib/reactivity'
 
-const update = () => {
-  const app = document.querySelector("#app") as Container
-  app.vnode!._instance!._update!()
-}
+const Child = (data: any) => () => h(
+  "span",
+  {
+    style: {
+      "color": "blue"
+    }
+  },
+  data.count
+)
 
-function Child(data: any) {
-  return () => createVNode(
-    "span",
-    {
-      style: {
-        "color": "blue"
+function App(): () => VNode {
+  let state = reactive({
+    count: 0
+  })
+  
+  onMounted(() => {
+    console.log("onMounted");
+  })
+
+  const handleClick = () => {
+    state.count++
+  }
+  return () => h(
+    "div",
+    { onClick: handleClick },
+    h(
+      Child,
+      {
+        props: {
+          count: state.count
+        }
       }
-    },
-    data.msg
+    )
   )
 }
 
-function App(): () => VNode {
-  let color = "red"
-  let msg = "AAA"
-  let children: (VNode | string)[] = [
-    createVNode("button", {
-      onClick() {
-        children.push(
-          createVNode(
-            "h1",
-            {},
-            "h1 added"
-          )
-        )
-        update()
-      }
-    }, "增加一个"),
-    createVNode("button", {
-      onClick() {
-        children.pop()
-        update()
-      }
-    }, "删除一个"),
-  ]
-  const clickHandler = () => {
-    color = color === "red" ? "green" : "red"
-    msg += "A"
-    update()
-  }
-  return () => {
-    return createVNode(
-      "div",
-      {
-        style: {
-          color
-        },
-        onClick: clickHandler
-      },
-      createVNode(Child, {
-        msg
-      }),
-    )
-  }
-}
-
-const main: VNode = createVNode(
+const main: VNode = h(
   App,
   {},
 )

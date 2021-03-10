@@ -13,7 +13,7 @@ export interface FC<T = any> {
   (props?: T): () => VNode
 }
 
-export type VNodeType = string | VNode | FC
+export type VNodeType = string | VNode | FC | null
 
 type InternalProps<T = unknown> = Partial<{
   ref: VNodeReference<T>,
@@ -31,17 +31,28 @@ export interface VNodeData extends InternalProps {
 }
 export type VNodeChildren = VNode[] | VNode | string | null
 
+const None = 0
+
 export enum VNodeFlags {
-  Element = /*        */ 0b0000001,
-  FC = /*             */ 0b0000010,
+  Element = /*        */ 0b00000001,
+  FC = /*             */ 0b00000010,
+  Text = /**          */ 0b00000100
 }
 export enum ChildrenFlags {
-  Multiple = /*       */ 0b0000001,
-  Single = /*         */ 0b0000010,
-  Text = /*           */ 0b0000100,
-  NoChildren = /*     */ 0b0001000
+  Multiple = /*       */ 0b00000001,
+  Single = /*         */ 0b00000010,
+  NoChildren = /*     */ 0b00001000
 }
 
+export interface VNodeInstance {
+  _props: Record<any, any>,
+  _render: (() => VNode) | null,
+  _mounted: boolean,
+  _vnode: VNode | null,
+  _update: (() => void) | null,
+  _onMount: (() => void)[],
+  _onUnmount: (() => void)[],
+}
 export class VNode {
   type: VNodeType
   data: VNodeData = {}
@@ -51,16 +62,8 @@ export class VNode {
   children: VNodeChildren
   childFlags: ChildrenFlags
   key: any = Symbol()
-  _instance: {
-    _props: Record<any, any>,
-    _render: (() => VNode) | null,
-    _mounted: boolean,
-    _vnode: VNode | null,
-    _update: (() => void) | null,
-    _onMount: (() => void)[],
-    _onUnmount: (() => void)[],
-  } | null = null
-  constructor(type: string | FC, data: VNodeData, children: VNodeChildren) {
+  _instance: VNodeInstance | null = null
+  constructor(type: VNodeType, data: VNodeData, children: VNodeChildren) {
     this.type = type
     if (typeof type === "function") {
       this.flags = VNodeFlags.FC
@@ -73,53 +76,56 @@ export class VNode {
         _onMount: [],
         _onUnmount: []
       }
-    } else {
+    } else if (typeof type === "string") {
       this.flags = VNodeFlags.Element
+    } else {
+      this.flags = VNodeFlags.Text
     }
 
     this.data = data
     const isChildrenArray = Array.isArray(children)
 
     /**确定children类型 */
-    if (!children) {
-      this.childFlags = ChildrenFlags.NoChildren
-    } else if (typeof children === "string") {
-      this.childFlags = ChildrenFlags.Text
-    } else if (isChildrenArray) {
+    if (isChildrenArray) {
       /**是数组 */
-      if ((children as VNode[]).length > 1) {
-        this.childFlags = ChildrenFlags.Multiple
-      } else if ((children as VNode[]).length === 0) {
+      this.children = (children as VNode[]).map(c => {
+        if (typeof c === 'string') {
+          return createVNode(null, null, c)
+        }
+        return c
+      })
+      this.childFlags = ChildrenFlags.Multiple
+    } else if (typeof children === "object" && children !== null) {
+      this.children = children
+      this.childFlags = ChildrenFlags.Single
+    } else if (typeof children === "string") {
+      if (this.flags & VNodeFlags.Text) {
         this.childFlags = ChildrenFlags.NoChildren
+        this.children = children
       } else {
         this.childFlags = ChildrenFlags.Single
+        this.children = createVNode(null, null, children)
       }
-    } else if (typeof children === "object") {
-      this.childFlags = ChildrenFlags.Single
     } else {
       this.childFlags = ChildrenFlags.NoChildren
-      _err("子children类型只能是VNode[] | VNode | string", null)
+      this.children = null
     }
-
-    this.children = this.childFlags & ChildrenFlags.NoChildren
-      ? null
-      : this.childFlags & (ChildrenFlags.Multiple | ChildrenFlags.Text)
-        ? children
-        : this.childFlags & ChildrenFlags.Single
-          ? isChildrenArray
-            ? (children as VNode[])[0] : children
-          : null
   }
 }
 
-export function createVNode(type: string | FC, data: VNodeData | null, ...children: (VNode | string)[]): VNode {
+export function createVNode(type: VNodeType, data: VNodeData | null, ...children: (VNode | Object)[]): VNode {
   let _children: VNodeChildren = null
   if (children.length === 0) {
     _children = null
   } else if (children.length === 1) {
+    /**@ts-ignore */
     _children = children[0]
+    if (typeof _children !== "object") {
+      _children = _children + ""
+    }
   } else {
     _children = children as VNodeChildren
   }
+
   return new VNode(type, data || {}, _children)
 }

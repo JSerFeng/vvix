@@ -5,7 +5,10 @@
   "main": "index.js",
   "scripts": {
     "build": "set NODE_ENV=production && rollup --config",
-    "test": "jest"
+    "nocache": "jest --no-cache",
+    "test": "jest",
+    "coverage": "jest --coverage",
+    "verbose": "npx jest --verbose"
   },
   "author": "",
   "license": "ISC",

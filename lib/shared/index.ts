@@ -4,6 +4,10 @@ export interface LooseObj {
   [k: string]: any
 }
 
+export interface Fn {
+  (...args: any[]): any
+}
+
 export const _warn = (msg: string) => {
   console.warn(msg)
 }

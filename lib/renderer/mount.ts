@@ -1,44 +1,47 @@
-import { ChildrenFlags, FC, VNode, VNodeFlags } from "../vdom/vdom";
+import { effect } from "lib/reactivity";
+import { _warn } from "lib/shared";
+import { ChildrenFlags, FC, VNode, VNodeFlags, VNodeInstance } from "../vdom/vdom";
 import { patch } from "./patch";
 import { Container } from "./render";
 
-export function mount(vnode: VNode | string, container: Container) {
-  if (typeof vnode === "string") {
-    mountTextChild(container, vnode)
-    return
-  } 
+export let _currentMountingFC: VNodeInstance | null = null
+
+export function mount(vnode: VNode, container: Container) {
   const { flags, childFlags, children } = vnode
   if (flags & VNodeFlags.FC) {
     mountFC(vnode, container)
   } else if (flags & VNodeFlags.Element) {
     mountElement(vnode, container)
+  } else {
+    mountTextChild(vnode, container)
   }
 
   /**mount children */
-  if (!(childFlags & ChildrenFlags.NoChildren)) {
-    if (childFlags & ChildrenFlags.Single) {
-      mountSingleChild(vnode, children as VNode)
-    } else if (childFlags & ChildrenFlags.Text) {
-      mountTextChild(vnode.el!, children as string)
-    } else if (childFlags & ChildrenFlags.Multiple) {
-      mountMultipleChildren(vnode, children as VNode[])
-    }
+  if (childFlags & ChildrenFlags.NoChildren) {
+    return
+  }
+  if (childFlags & ChildrenFlags.Single) {
+    mountSingleChild(vnode, children as VNode)
+  } else if (childFlags & ChildrenFlags.Multiple) {
+    mountMultipleChildren(vnode, children as VNode[])
   }
 }
 
 /**@TODO should handle the ref prop */
 const mountFC = (vnode: VNode, container: Container) => {
-  const { type, data } = vnode
-  vnode._instance!._update = () => {
-    if (vnode._instance!._mounted) {
-      const oldVNode = vnode._instance!._vnode
-      const newVNode = vnode._instance!._render!()
+  const { type, _instance } = vnode
+  _instance!._update = () => {
+    if (_instance!._mounted) {
+      /**patch */
+      const oldVNode = _instance!._vnode
+
+      const newVNode = _instance!._render!()
+
       patch(newVNode, oldVNode, container)
       vnode._instance!._vnode = newVNode
-    } else { /**mount */
-      const _props = vnode._instance!._props
-      const render = (vnode._instance!._render = (type as FC)(_props))
-      const newVNode = vnode._instance!._vnode = render()
+    } else {
+      /**mount */
+      const newVNode = _instance!._vnode = _instance!._render!()
       mount(newVNode, container)
       vnode.el = newVNode.el
       vnode._instance!._mounted = true
@@ -47,7 +50,15 @@ const mountFC = (vnode: VNode, container: Container) => {
       }
     }
   }
-  vnode._instance!._update()
+  _currentMountingFC = _instance
+  _instance!._render = (type as FC)(
+    _instance!._props
+  )
+  _currentMountingFC = null
+
+  effect(() => {
+    _instance!._update!()
+  })
 }
 
 const mountElement = (vnode: VNode, container: Container) => {
@@ -79,8 +90,10 @@ const mountElement = (vnode: VNode, container: Container) => {
   container.appendChild(el)
 }
 
-const mountTextChild = (container: Container, child: string) => {
-  const textNode = document.createTextNode(child)
+const mountTextChild = (vnode: VNode, container: Container) => {
+  const textNode = document.createTextNode(vnode.children as string)
+  vnode.el = textNode as any as Container
+  container.vnode = vnode
   container.appendChild(textNode)
 }
 
@@ -95,8 +108,8 @@ const mountMultipleChildren = (parent: VNode, children: VNode[]) => {
 }
 
 export const unmount = (vnode: VNode, container: Container) => {
-  const { childFlags, flags, children } = vnode
-  if (flags & VNodeFlags.Element) {
+  const { flags } = vnode
+  if (flags & VNodeFlags.Element || flags & VNodeFlags.Text) {
     container.removeChild(vnode.el!)
   } else if (flags & VNodeFlags.FC) {
     unmountFC(vnode, container)
@@ -121,4 +134,19 @@ const unmountFC = (vnode: VNode, container: Container) => {
     }
   }
   container.removeChild(el)
+}
+
+export const onMounted = (fn: () => any) => {
+  if (!_currentMountingFC) {
+    _warn("hook must be called inside a function component")
+  } else {
+    _currentMountingFC._onMount.push(fn)
+  }
+}
+export const onUnmounted = (fn: () => any) => {
+  if (!_currentMountingFC) {
+    _warn("hook must be called inside a function component")
+  } else {
+    _currentMountingFC._onUnmount.push(fn)
+  }
 }

@@ -12,7 +12,9 @@ export const patch = (
     if (isSameVNode(newVNode, oldVNode)) {
       const flags = newVNode.flags
       if (flags & VNodeFlags.FC) {
-        patchFC(newVNode, oldVNode, container)
+        patchFC(newVNode, oldVNode)
+      } else if (flags & VNodeFlags.Text) {
+        patchTextVNode(newVNode, oldVNode)
       } else {
         patchElement(newVNode, oldVNode, container)
       }
@@ -66,14 +68,14 @@ const patchProp = (
   }
 }
 
-const patchFC = (newVNode: VNode, oldVNode: VNode, container: Container) => {
+const patchFC = (newVNode: VNode, oldVNode: VNode) => {
   if (bailout(newVNode, oldVNode)) {
     return
   }
 
+  const newData = newVNode._instance!._props
+  const oldData = oldVNode._instance!._props
   newVNode._instance = oldVNode._instance!
-  const newData = newVNode.data
-  const oldData = oldVNode.data
 
   for (const key in newData) {
     if (newData[key] !== oldData[key]) {
@@ -85,7 +87,7 @@ const patchFC = (newVNode: VNode, oldVNode: VNode, container: Container) => {
 }
 
 const patchElement = (newVNode: VNode, oldVNode: VNode, container: Container) => {
-  const el = newVNode.el = oldVNode.el!
+  const el = (newVNode.el = oldVNode.el!)
   for (const key in newVNode.data) {
     patchProp(el, key, newVNode.data[key], oldVNode.data[key])
   }
@@ -97,6 +99,13 @@ const patchElement = (newVNode: VNode, oldVNode: VNode, container: Container) =>
   patchChildren(newVNode, oldVNode, container)
 }
 
+const patchTextVNode = (newVNode: VNode, oldVNode: VNode) => {
+  const el = (newVNode.el = oldVNode.el)!
+  if (newVNode.children !== oldVNode.children) {
+    el.textContent = newVNode.children as string
+  }
+}
+
 const replaceVNode = (newVNode: VNode, oldVNode: VNode, container: Container) => {
   container.removeChild(oldVNode.el!)
   mount(newVNode, container)
@@ -105,24 +114,16 @@ const replaceVNode = (newVNode: VNode, oldVNode: VNode, container: Container) =>
 const patchChildren = (newVNode: VNode, oldVNode: VNode, container: Container) => {
   const { childFlags: newFlag, children: newChildren } = newVNode
   const { childFlags: oldFlag, children: oldChildren, el } = oldVNode
-  if (newFlag & ChildrenFlags.NoChildren || newFlag & ChildrenFlags.Text) {
-    if (oldFlag & ChildrenFlags.Text) {
-      el!.textContent = ""
-    } else if (oldFlag & ChildrenFlags.Single) {
+  if (newFlag & ChildrenFlags.NoChildren) {
+    if (oldFlag & ChildrenFlags.Single) {
       el!.removeChild((oldChildren as VNode).el!)
     } else if (oldFlag & ChildrenFlags.Multiple) {
       for (const child of (oldChildren as VNode[])) {
         unmount(child, el!)
       }
     }
-    if (newFlag & ChildrenFlags.Text) {
-      el!.textContent = newChildren as string
-    }
   } else if (newFlag & ChildrenFlags.Single) {
     if (oldFlag & ChildrenFlags.NoChildren) {
-      mount(newChildren as VNode, el!)
-    } else if (oldFlag & ChildrenFlags.Text) {
-      el!.textContent = ""
       mount(newChildren as VNode, el!)
     } else if (oldFlag & ChildrenFlags.Single) {
       patch(newChildren as VNode, oldChildren as VNode, el!)
@@ -134,11 +135,6 @@ const patchChildren = (newVNode: VNode, oldVNode: VNode, container: Container) =
     }
   } else if (newFlag & ChildrenFlags.Multiple) {
     if (oldFlag & ChildrenFlags.NoChildren) {
-      for (const child of (newChildren as VNode[])) {
-        mount(child, el!)
-      }
-    } else if (oldFlag & ChildrenFlags.Text) {
-      el!.textContent = ""
       for (const child of (newChildren as VNode[])) {
         mount(child, el!)
       }
@@ -163,4 +159,36 @@ const bailout = (v1: VNode, v2: VNode): boolean => {
   const propsB = v2._instance!._props
 
   return shallowEqual(propsA, propsB)
+}
+
+export const lis = (arr: number[]): number[] => {
+  const len = arr.length
+  if (len === 0) return []
+  if (len === 1) return [0]
+  const res = new Array(len).fill(1)
+  const ret: number[] = []
+
+  let idx = -1
+  for (let i = len - 1; i >= 0; i--) {
+    const value1 = arr[i]
+    for (let j = i + 1; j < len; j++) {
+      const value2 = arr[j]
+      if (value1 < value2) {
+        res[i] = Math.max(res[i], 1 + res[j])
+        if (idx === -1 || res[idx] < res[i]) {
+          idx = i
+        }
+      }
+    }
+  }
+  if (idx === -1) return []
+  
+  while (idx < len) {
+    const currValue = res[idx]
+    ret.push(idx++)
+    while (res[idx] !== currValue - 1 && idx < len) {
+      idx++
+    }
+  }
+  return ret
 }

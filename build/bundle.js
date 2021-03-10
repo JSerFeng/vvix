@@ -1,22 +1,148 @@
 (function (exports) {
   'use strict';
 
-  const _err = (msg, err) => {
-      console.error(msg);
-      console.error(err);
+  const effectStack = [];
+  exports.activeEffect = null;
+  function effect(fn, option = {
+      lazy: false,
+      active: true
+  }) {
+      const _effect = createEffect(fn, option);
+      if (!_effect.lazy) {
+          _effect();
+      }
+      return _effect;
+  }
+  function createEffect(fn, option) {
+      const effect = function reactiveEffect(...args) {
+          if (reactiveEffect.active) {
+              try {
+                  if (!effectStack.includes(effect)) {
+                      effectStack.push(reactiveEffect);
+                  }
+                  exports.activeEffect = effect;
+                  return fn(...args);
+              }
+              finally {
+                  effectStack.pop();
+                  exports.activeEffect = null;
+              }
+          }
+      };
+      effect.lazy = option.lazy || false;
+      effect.active = option.active || true;
+      effect.raw = fn;
+      effect.deps = [];
+      return effect;
+  }
+  const trigger = (target, key) => {
+      const depsMap = targetMap.get(target);
+      if (!depsMap)
+          return;
+      const deps = depsMap.get(key);
+      if (!deps)
+          return;
+      deps.forEach(effect => effect());
+  };
+  const targetMap = new WeakMap();
+  const track = (target, key) => {
+      if (!exports.activeEffect)
+          return;
+      let depsMap = targetMap.get(target);
+      if (!depsMap) {
+          targetMap.set(target, depsMap = new Map());
+      }
+      let deps = depsMap.get(key);
+      if (!deps) {
+          depsMap.set(key, deps = new Set());
+      }
+      if (!deps.has(exports.activeEffect)) {
+          deps.add(exports.activeEffect);
+          exports.activeEffect.deps.push(deps);
+      }
+  };
+  const stop = (effect) => {
+      effect.active = false;
+  };
+
+  const raw2proxy = new WeakMap();
+  const proxy2raw = new WeakMap();
+  const baseHandler = {
+      get(target, key, receiver) {
+          if (key === "_mark")
+              return true;
+          if (key === "_raw")
+              return target;
+          const val = Reflect.get(target, key, receiver);
+          track(target, key);
+          return typeof val === "object" ? reactive(val) : val;
+      },
+      set(target, key, value, receiver) {
+          const oldValue = target[key];
+          const result = Reflect.set(target, key, value, receiver);
+          if (value !== oldValue) {
+              trigger(target, key);
+          }
+          return result;
+      },
+      has(target, key) {
+          const result = Reflect.has(target, key);
+          track(target, key);
+          return result;
+      },
+      deleteProperty(target, key) {
+          const result = Reflect.deleteProperty(target, key);
+          trigger(target, key);
+          return result;
+      }
+  };
+  const reactive = (target) => {
+      if (typeof target !== "object")
+          return target;
+      if (target._raw)
+          return target;
+      let observed;
+      if (observed = raw2proxy.get(target)) {
+          return observed;
+      }
+      observed = new Proxy(target, baseHandler);
+      proxy2raw.set(observed, target);
+      return observed;
+  };
+  const toRaw = (target) => {
+      return proxy2raw.get(target) || target;
+  };
+  const markRaw = (target) => {
+      target._raw = true;
+      return target;
+  };
+
+  const _warn = (msg) => {
+      console.warn(msg);
   };
   const isSameVNode = (v1, v2) => v1.flags === v2.flags && v1.type === v2.type;
+  const shallowEqual = (propsA, propsB) => {
+      if (Object.keys(propsA).length !== Object.keys(propsB).length)
+          return false;
+      for (const key in propsA) {
+          if (!(key in propsB) || propsA[key] !== propsB[key]) {
+              return false;
+          }
+      }
+      return true;
+  };
 
+  /** useRef */
   exports.VNodeFlags = void 0;
   (function (VNodeFlags) {
       VNodeFlags[VNodeFlags["Element"] = 1] = "Element";
       VNodeFlags[VNodeFlags["FC"] = 2] = "FC";
+      VNodeFlags[VNodeFlags["Text"] = 4] = "Text";
   })(exports.VNodeFlags || (exports.VNodeFlags = {}));
   exports.ChildrenFlags = void 0;
   (function (ChildrenFlags) {
       ChildrenFlags[ChildrenFlags["Multiple"] = 1] = "Multiple";
       ChildrenFlags[ChildrenFlags["Single"] = 2] = "Single";
-      ChildrenFlags[ChildrenFlags["Text"] = 4] = "Text";
       ChildrenFlags[ChildrenFlags["NoChildren"] = 8] = "NoChildren";
   })(exports.ChildrenFlags || (exports.ChildrenFlags = {}));
   class VNode {
@@ -30,7 +156,7 @@
           if (typeof type === "function") {
               this.flags = exports.VNodeFlags.FC;
               this._instance = {
-                  _props: {},
+                  _props: data.props || {},
                   _render: null,
                   _mounted: false,
                   _vnode: null,
@@ -39,45 +165,43 @@
                   _onUnmount: []
               };
           }
-          else {
+          else if (typeof type === "string") {
               this.flags = exports.VNodeFlags.Element;
+          }
+          else {
+              this.flags = exports.VNodeFlags.Text;
           }
           this.data = data;
           const isChildrenArray = Array.isArray(children);
           /**确定children类型 */
-          if (!children) {
-              this.childFlags = exports.ChildrenFlags.NoChildren;
+          if (isChildrenArray) {
+              /**是数组 */
+              this.children = children.map(c => {
+                  if (typeof c === 'string') {
+                      return createVNode(null, null, c);
+                  }
+                  return c;
+              });
+              this.childFlags = exports.ChildrenFlags.Multiple;
+          }
+          else if (typeof children === "object" && children !== null) {
+              this.children = children;
+              this.childFlags = exports.ChildrenFlags.Single;
           }
           else if (typeof children === "string") {
-              this.childFlags = exports.ChildrenFlags.Text;
-          }
-          else if (isChildrenArray) {
-              /**是数组 */
-              if (children.length > 1) {
-                  this.childFlags = exports.ChildrenFlags.Multiple;
-              }
-              else if (children.length === 0) {
+              if (this.flags & exports.VNodeFlags.Text) {
                   this.childFlags = exports.ChildrenFlags.NoChildren;
+                  this.children = children;
               }
               else {
                   this.childFlags = exports.ChildrenFlags.Single;
+                  this.children = createVNode(null, null, children);
               }
-          }
-          else if (typeof children === "object") {
-              this.childFlags = exports.ChildrenFlags.Single;
           }
           else {
               this.childFlags = exports.ChildrenFlags.NoChildren;
-              _err("子children类型只能是VNode[] | VNode | string", null);
+              this.children = null;
           }
-          this.children = this.childFlags & exports.ChildrenFlags.NoChildren
-              ? null
-              : this.childFlags & (exports.ChildrenFlags.Multiple | exports.ChildrenFlags.Text)
-                  ? children
-                  : this.childFlags & exports.ChildrenFlags.Single
-                      ? isChildrenArray
-                          ? children[0] : children
-                      : null;
       }
   }
   function createVNode(type, data, ...children) {
@@ -86,7 +210,11 @@
           _children = null;
       }
       else if (children.length === 1) {
+          /**@ts-ignore */
           _children = children[0];
+          if (typeof _children !== "object") {
+              _children = _children + "";
+          }
       }
       else {
           _children = children;
@@ -100,6 +228,9 @@
               const flags = newVNode.flags;
               if (flags & exports.VNodeFlags.FC) {
                   patchFC(newVNode, oldVNode);
+              }
+              else if (flags & exports.VNodeFlags.Text) {
+                  patchTextVNode(newVNode, oldVNode);
               }
               else {
                   patchElement(newVNode, oldVNode);
@@ -151,10 +282,13 @@
               }
       }
   };
-  const patchFC = (newVNode, oldVNode, container) => {
+  const patchFC = (newVNode, oldVNode) => {
+      if (bailout(newVNode, oldVNode)) {
+          return;
+      }
+      const newData = newVNode._instance._props;
+      const oldData = oldVNode._instance._props;
       newVNode._instance = oldVNode._instance;
-      const newData = newVNode.data;
-      const oldData = oldVNode.data;
       for (const key in newData) {
           if (newData[key] !== oldData[key]) {
               /**@ts-ignore */
@@ -164,7 +298,7 @@
       newVNode._instance._update();
   };
   const patchElement = (newVNode, oldVNode, container) => {
-      const el = newVNode.el = oldVNode.el;
+      const el = (newVNode.el = oldVNode.el);
       for (const key in newVNode.data) {
           patchProp(el, key, newVNode.data[key], oldVNode.data[key]);
       }
@@ -175,6 +309,12 @@
       }
       patchChildren(newVNode, oldVNode);
   };
+  const patchTextVNode = (newVNode, oldVNode) => {
+      const el = (newVNode.el = oldVNode.el);
+      if (newVNode.children !== oldVNode.children) {
+          el.textContent = newVNode.children;
+      }
+  };
   const replaceVNode = (newVNode, oldVNode, container) => {
       container.removeChild(oldVNode.el);
       mount(newVNode, container);
@@ -182,11 +322,8 @@
   const patchChildren = (newVNode, oldVNode, container) => {
       const { childFlags: newFlag, children: newChildren } = newVNode;
       const { childFlags: oldFlag, children: oldChildren, el } = oldVNode;
-      if (newFlag & exports.ChildrenFlags.NoChildren || newFlag & exports.ChildrenFlags.Text) {
-          if (oldFlag & exports.ChildrenFlags.Text) {
-              el.textContent = "";
-          }
-          else if (oldFlag & exports.ChildrenFlags.Single) {
+      if (newFlag & exports.ChildrenFlags.NoChildren) {
+          if (oldFlag & exports.ChildrenFlags.Single) {
               el.removeChild(oldChildren.el);
           }
           else if (oldFlag & exports.ChildrenFlags.Multiple) {
@@ -194,16 +331,9 @@
                   unmount(child, el);
               }
           }
-          if (newFlag & exports.ChildrenFlags.Text) {
-              el.textContent = newChildren;
-          }
       }
       else if (newFlag & exports.ChildrenFlags.Single) {
           if (oldFlag & exports.ChildrenFlags.NoChildren) {
-              mount(newChildren, el);
-          }
-          else if (oldFlag & exports.ChildrenFlags.Text) {
-              el.textContent = "";
               mount(newChildren, el);
           }
           else if (oldFlag & exports.ChildrenFlags.Single) {
@@ -218,12 +348,6 @@
       }
       else if (newFlag & exports.ChildrenFlags.Multiple) {
           if (oldFlag & exports.ChildrenFlags.NoChildren) {
-              for (const child of newChildren) {
-                  mount(child, el);
-              }
-          }
-          else if (oldFlag & exports.ChildrenFlags.Text) {
-              el.textContent = "";
               for (const child of newChildren) {
                   mount(child, el);
               }
@@ -244,12 +368,46 @@
           }
       }
   };
-
-  function mount(vnode, container) {
-      if (typeof vnode === "string") {
-          mountTextChild(container, vnode);
-          return;
+  const bailout = (v1, v2) => {
+      const propsA = v1._instance._props;
+      const propsB = v2._instance._props;
+      return shallowEqual(propsA, propsB);
+  };
+  const lis = (arr) => {
+      const len = arr.length;
+      if (len === 0)
+          return [];
+      if (len === 1)
+          return [0];
+      const res = new Array(len).fill(1);
+      const ret = [];
+      let idx = -1;
+      for (let i = len - 1; i >= 0; i--) {
+          const value1 = arr[i];
+          for (let j = i + 1; j < len; j++) {
+              const value2 = arr[j];
+              if (value1 < value2) {
+                  res[i] = Math.max(res[i], 1 + res[j]);
+                  if (idx === -1 || res[idx] < res[i]) {
+                      idx = i;
+                  }
+              }
+          }
       }
+      if (idx === -1)
+          return [];
+      while (idx < len) {
+          const currValue = res[idx];
+          ret.push(idx++);
+          while (res[idx] !== currValue - 1 && idx < len) {
+              idx++;
+          }
+      }
+      return ret;
+  };
+
+  exports._currentMountingFC = null;
+  function mount(vnode, container) {
       const { flags, childFlags, children } = vnode;
       if (flags & exports.VNodeFlags.FC) {
           mountFC(vnode, container);
@@ -257,33 +415,34 @@
       else if (flags & exports.VNodeFlags.Element) {
           mountElement(vnode, container);
       }
+      else {
+          mountTextChild(vnode, container);
+      }
       /**mount children */
-      if (!(childFlags & exports.ChildrenFlags.NoChildren)) {
-          if (childFlags & exports.ChildrenFlags.Single) {
-              mountSingleChild(vnode, children);
-          }
-          else if (childFlags & exports.ChildrenFlags.Text) {
-              mountTextChild(vnode.el, children);
-          }
-          else if (childFlags & exports.ChildrenFlags.Multiple) {
-              mountMultipleChildren(vnode, children);
-          }
+      if (childFlags & exports.ChildrenFlags.NoChildren) {
+          return;
+      }
+      if (childFlags & exports.ChildrenFlags.Single) {
+          mountSingleChild(vnode, children);
+      }
+      else if (childFlags & exports.ChildrenFlags.Multiple) {
+          mountMultipleChildren(vnode, children);
       }
   }
   /**@TODO should handle the ref prop */
   const mountFC = (vnode, container) => {
-      const { type, data } = vnode;
-      vnode._instance._update = () => {
-          if (vnode._instance._mounted) {
-              const oldVNode = vnode._instance._vnode;
-              const newVNode = vnode._instance._render();
+      const { type, _instance } = vnode;
+      _instance._update = () => {
+          if (_instance._mounted) {
+              /**patch */
+              const oldVNode = _instance._vnode;
+              const newVNode = _instance._render();
               patch(newVNode, oldVNode, container);
               vnode._instance._vnode = newVNode;
           }
-          else { /**mount */
-              const _props = vnode._instance._props = data;
-              const render = (vnode._instance._render = type(_props));
-              const newVNode = vnode._instance._vnode = render();
+          else {
+              /**mount */
+              const newVNode = _instance._vnode = _instance._render();
               mount(newVNode, container);
               vnode.el = newVNode.el;
               vnode._instance._mounted = true;
@@ -292,7 +451,12 @@
               }
           }
       };
-      vnode._instance._update();
+      exports._currentMountingFC = _instance;
+      _instance._render = type(_instance._props);
+      exports._currentMountingFC = null;
+      effect(() => {
+          _instance._update();
+      });
   };
   const mountElement = (vnode, container) => {
       const { data } = vnode;
@@ -322,8 +486,10 @@
       vnode.el = el;
       container.appendChild(el);
   };
-  const mountTextChild = (container, child) => {
-      const textNode = document.createTextNode(child);
+  const mountTextChild = (vnode, container) => {
+      const textNode = document.createTextNode(vnode.children);
+      vnode.el = textNode;
+      container.vnode = vnode;
       container.appendChild(textNode);
   };
   const mountSingleChild = (parent, child) => {
@@ -335,8 +501,8 @@
       }
   };
   const unmount = (vnode, container) => {
-      const { childFlags, flags, children } = vnode;
-      if (flags & exports.VNodeFlags.Element) {
+      const { flags } = vnode;
+      if (flags & exports.VNodeFlags.Element || flags & exports.VNodeFlags.Text) {
           container.removeChild(vnode.el);
       }
       else if (flags & exports.VNodeFlags.FC) {
@@ -360,6 +526,22 @@
           }
       }
       container.removeChild(el);
+  };
+  const onMounted = (fn) => {
+      if (!exports._currentMountingFC) {
+          _warn("hook must be called inside a function component");
+      }
+      else {
+          exports._currentMountingFC._onMount.push(fn);
+      }
+  };
+  const onUnmounted = (fn) => {
+      if (!exports._currentMountingFC) {
+          _warn("hook must be called inside a function component");
+      }
+      else {
+          exports._currentMountingFC._onUnmount.push(fn);
+      }
   };
 
   const render = (vnode, container) => {
@@ -400,79 +582,55 @@
       };
   };
 
-  const baseHandler = {
-      get(target, key, receiver) {
-          const val = Reflect.get(target, key, receiver);
-          return val;
-      },
-      set(target, key, value, receiver) {
-          return Reflect.set(target, key, value, receiver);
-      }
-  };
-  const reactive = (target) => {
-      return new Proxy(target, baseHandler);
-  };
-
   const updateQueue = new Set();
   const readyToUpdate = (fn) => {
       updateQueue.add(fn);
   };
 
-  const update = () => {
-      const app = document.querySelector("#app");
-      app.vnode._instance._update();
-  };
-  function Child(data) {
-      return () => createVNode("span", {
-          style: {
-              "color": "blue"
-          }
-      }, data.msg);
-  }
+  const Child = (data) => () => createVNode("span", {
+      style: {
+          "color": "blue"
+      }
+  }, "child" + data.count);
   function App() {
-      let color = "red";
-      let msg = "AAA";
-      let children = [
-          createVNode("button", {
-              onClick() {
-                  children.push(createVNode("h1", {}, "h1 added"));
-                  update();
-              }
-          }, "增加一个"),
-          createVNode("button", {
-              onClick() {
-                  children.pop();
-                  update();
-              }
-          }, "删除一个"),
-      ];
-      const clickHandler = () => {
-          color = color === "red" ? "green" : "red";
-          msg += "A";
-          update();
+      let state = reactive({
+          count: 0
+      });
+      onMounted(() => {
+          console.log("onMounted");
+      });
+      console.log("start mount");
+      const handleClick = () => {
+          state.count++;
       };
-      return () => {
-          return createVNode("div", {
-              style: {
-                  color
-              },
-              onClick: clickHandler
-          }, createVNode(Child, {
-              msg
-          }));
-      };
+      return () => createVNode("div", { onClick: handleClick }, createVNode(Child, {
+          props: {
+              count: state.count
+          }
+      }));
   }
   const main = createVNode(App, {});
   createApp(main).mount("#app");
 
   exports.VNode = VNode;
   exports.createApp = createApp;
+  exports.createEffect = createEffect;
   exports.createVNode = createVNode;
+  exports.effect = effect;
+  exports.effectStack = effectStack;
+  exports.lis = lis;
+  exports.markRaw = markRaw;
   exports.mount = mount;
+  exports.onMounted = onMounted;
+  exports.onUnmounted = onUnmounted;
   exports.patch = patch;
   exports.reactive = reactive;
   exports.readyToUpdate = readyToUpdate;
   exports.render = render;
+  exports.stop = stop;
+  exports.toRaw = toRaw;
+  exports.track = track;
+  exports.trigger = trigger;
   exports.unmount = unmount;
 
   Object.defineProperty(exports, '__esModule', { value: true });
