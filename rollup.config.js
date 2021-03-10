@@ -2,6 +2,7 @@ import resolve from 'rollup-plugin-node-resolve'
 import commonJsTransformer from 'rollup-plugin-commonjs'
 import ts from 'rollup-plugin-typescript2'
 import path from 'path'
+import babel from 'rollup-plugin-babel';
 
 const extensions = [
   '.js',

@@ -1,5 +1,6 @@
-import { Container, render } from "lib/renderer/render";
+import { Container, createRenderer } from "lib/renderer/render";
 import { VNode } from "../vdom";
+
 
 export const createApp = (app: VNode) => {
   return {
@@ -16,6 +17,7 @@ export const createApp = (app: VNode) => {
         }
       }
       container.innerHTML = ""
+      const render = createRenderer()
       render(app, container)
     }
   }

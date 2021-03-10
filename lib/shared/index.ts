@@ -30,3 +30,35 @@ export const shallowEqual = (propsA: Record<any, any>, propsB: Record<any, any>)
 
   return true
 }
+
+export const lis = (arr: number[]): number[] => {
+  const len = arr.length
+  if (len === 0) return []
+  if (len === 1) return [0]
+  const res = new Array(len).fill(1)
+  const ret: number[] = []
+
+  let idx = -1
+  for (let i = len - 1; i >= 0; i--) {
+    const value1 = arr[i]
+    for (let j = i + 1; j < len; j++) {
+      const value2 = arr[j]
+      if (value1 < value2) {
+        res[i] = Math.max(res[i], 1 + res[j])
+        if (idx === -1 || res[idx] < res[i]) {
+          idx = i
+        }
+      }
+    }
+  }
+  if (idx === -1) return []
+
+  while (idx < len) {
+    const currValue = res[idx]
+    ret.push(idx++)
+    while (res[idx] !== currValue - 1 && idx < len) {
+      idx++
+    }
+  }
+  return ret
+}
