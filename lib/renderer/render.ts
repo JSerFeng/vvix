@@ -1,4 +1,4 @@
-import { effect } from "index";
+import { effect } from "../reactivity";
 import { isSameVNode, shallowEqual, _warn } from "lib/shared";
 import { ChildrenFlags, FC, VNode, VNodeFlags, VNodeInstance } from "lib/vdom";
 

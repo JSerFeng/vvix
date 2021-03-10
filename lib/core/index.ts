@@ -1,7 +1,6 @@
 import { Container, createRenderer } from "lib/renderer/render";
 import { VNode } from "../vdom";
 
-
 export const createApp = (app: VNode) => {
   return {
     mount(container: string | Container | null) {

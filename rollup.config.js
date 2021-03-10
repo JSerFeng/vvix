@@ -5,9 +5,10 @@ import path from 'path'
 import babel from 'rollup-plugin-babel';
 
 const extensions = [
-  '.js',
+  '.tsx',
   '.ts',
-  '.tsx'
+  '.js',
+  '.jsx',
 ]
 
 const tsPlugin = ts({
@@ -20,11 +21,15 @@ export default {
   input: "./index.ts",     // 必须
   output: {  // 必须 (如果要输出多个，可以是一个数组)
     file: "./build/bundle.js",
-    format: "iife"
+    format: "iife",
+    name: "vvix"
   },
   plugins: [
     tsPlugin,
-    commonJsTransformer(),
+    babel({
+      "exclude": 'node_modules/**', // 只编译我们的源代码
+    }),
     resolve(),
+    commonJsTransformer(),
   ]
 };

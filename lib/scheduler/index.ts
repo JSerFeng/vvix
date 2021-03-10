@@ -1,4 +1,4 @@
-import { VNode } from "../vdom/vdom";
+import { VNode } from "../vdom";
 
 const updateQueue: WeakSet<() => VNode> = new Set()
 

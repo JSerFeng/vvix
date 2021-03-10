@@ -1,5 +1,121 @@
-(function (exports) {
+var vvix = (function (exports) {
   'use strict';
+
+  const effectStack = [];
+  exports.activeEffect = null;
+  function effect(fn, option = {
+      lazy: false,
+      active: true
+  }) {
+      const _effect = createEffect(fn, option);
+      if (!_effect.lazy) {
+          _effect();
+      }
+      return _effect;
+  }
+  function createEffect(fn, option) {
+      const effect = function reactiveEffect(...args) {
+          if (reactiveEffect.active) {
+              try {
+                  if (!effectStack.includes(effect)) {
+                      effectStack.push(reactiveEffect);
+                  }
+                  exports.activeEffect = effect;
+                  return fn(...args);
+              }
+              finally {
+                  effectStack.pop();
+                  exports.activeEffect = null;
+              }
+          }
+      };
+      effect.lazy = option.lazy || false;
+      effect.active = option.active || true;
+      effect.raw = fn;
+      effect.deps = [];
+      return effect;
+  }
+  const trigger = (target, key) => {
+      const depsMap = targetMap.get(target);
+      if (!depsMap)
+          return;
+      const deps = depsMap.get(key);
+      if (!deps)
+          return;
+      deps.forEach(effect => effect());
+  };
+  const targetMap = new WeakMap();
+  const track = (target, key) => {
+      if (!exports.activeEffect)
+          return;
+      let depsMap = targetMap.get(target);
+      if (!depsMap) {
+          targetMap.set(target, depsMap = new Map());
+      }
+      let deps = depsMap.get(key);
+      if (!deps) {
+          depsMap.set(key, deps = new Set());
+      }
+      if (!deps.has(exports.activeEffect)) {
+          deps.add(exports.activeEffect);
+          exports.activeEffect.deps.push(deps);
+      }
+  };
+  const stop = (effect) => {
+      effect.active = false;
+  };
+
+  const raw2proxy = new WeakMap();
+  const proxy2raw = new WeakMap();
+  const baseHandler = {
+      get(target, key, receiver) {
+          if (key === "_mark")
+              return true;
+          if (key === "_raw")
+              return target;
+          const val = Reflect.get(target, key, receiver);
+          track(target, key);
+          return typeof val === "object" ? reactive(val) : val;
+      },
+      set(target, key, value, receiver) {
+          const oldValue = target[key];
+          const result = Reflect.set(target, key, value, receiver);
+          if (value !== oldValue) {
+              trigger(target, key);
+          }
+          return result;
+      },
+      has(target, key) {
+          const result = Reflect.has(target, key);
+          track(target, key);
+          return result;
+      },
+      deleteProperty(target, key) {
+          const result = Reflect.deleteProperty(target, key);
+          trigger(target, key);
+          return result;
+      }
+  };
+  const reactive = (target) => {
+      if (typeof target !== "object")
+          return target;
+      if (target._raw)
+          return target;
+      let observed;
+      if (observed = raw2proxy.get(target)) {
+          return observed;
+      }
+      observed = new Proxy(target, baseHandler);
+      proxy2raw.set(observed, target);
+      return observed;
+  };
+  const toRaw = (target) => {
+      return proxy2raw.get(target) || target;
+  };
+  const markRaw = (target) => {
+      target._raw = true;
+      return target;
+  };
 
   const _warn = (msg) => {
       console.warn(msg);
@@ -40,7 +156,10 @@
           if (typeof type === "function") {
               this.flags = exports.VNodeFlags.FC;
               this._instance = {
-                  _props: data.props || {},
+                  _props: {
+                      children: [],
+                      ...data
+                  },
                   _render: null,
                   _mounted: false,
                   _vnode: null,
@@ -62,7 +181,7 @@
               /**是数组 */
               this.children = children.map(c => {
                   if (typeof c === 'string') {
-                      return createVNode(null, null, c);
+                      return h(null, null, c);
                   }
                   return c;
               });
@@ -79,7 +198,7 @@
               }
               else {
                   this.childFlags = exports.ChildrenFlags.Single;
-                  this.children = createVNode(null, null, children);
+                  this.children = h(null, null, children);
               }
           }
           else {
@@ -88,7 +207,7 @@
           }
       }
   }
-  function createVNode(type, data, ...children) {
+  function h(type, data, ...children) {
       let _children = null;
       if (children.length === 0) {
           _children = null;
@@ -105,6 +224,18 @@
       }
       return new VNode(type, data || {}, _children);
   }
+  const jsx = (type, data, key) => {
+      let { children } = data;
+      if (children === undefined) {
+          children = [];
+      }
+      else if (!Array.isArray(children)) {
+          /**@ts-ignore */
+          children = [children];
+      }
+      return h(type, { key, ...data }, ...children);
+  };
+  const jsxs = jsx;
 
   const DomSpecialKeys = /\[A-Z]|^(?:value|checked|selected|muted)$/;
   let _currentMountingFC = null;
@@ -456,158 +587,45 @@
       };
   };
 
-  const effectStack = [];
-  exports.activeEffect = null;
-  function effect(fn, option = {
-      lazy: false,
-      active: true
-  }) {
-      const _effect = createEffect(fn, option);
-      if (!_effect.lazy) {
-          _effect();
-      }
-      return _effect;
-  }
-  function createEffect(fn, option) {
-      const effect = function reactiveEffect(...args) {
-          if (reactiveEffect.active) {
-              try {
-                  if (!effectStack.includes(effect)) {
-                      effectStack.push(reactiveEffect);
-                  }
-                  exports.activeEffect = effect;
-                  return fn(...args);
-              }
-              finally {
-                  effectStack.pop();
-                  exports.activeEffect = null;
-              }
-          }
-      };
-      effect.lazy = option.lazy || false;
-      effect.active = option.active || true;
-      effect.raw = fn;
-      effect.deps = [];
-      return effect;
-  }
-  const trigger = (target, key) => {
-      const depsMap = targetMap.get(target);
-      if (!depsMap)
-          return;
-      const deps = depsMap.get(key);
-      if (!deps)
-          return;
-      deps.forEach(effect => effect());
-  };
-  const targetMap = new WeakMap();
-  const track = (target, key) => {
-      if (!exports.activeEffect)
-          return;
-      let depsMap = targetMap.get(target);
-      if (!depsMap) {
-          targetMap.set(target, depsMap = new Map());
-      }
-      let deps = depsMap.get(key);
-      if (!deps) {
-          depsMap.set(key, deps = new Set());
-      }
-      if (!deps.has(exports.activeEffect)) {
-          deps.add(exports.activeEffect);
-          exports.activeEffect.deps.push(deps);
-      }
-  };
-  const stop = (effect) => {
-      effect.active = false;
-  };
-
-  const raw2proxy = new WeakMap();
-  const proxy2raw = new WeakMap();
-  const baseHandler = {
-      get(target, key, receiver) {
-          if (key === "_mark")
-              return true;
-          if (key === "_raw")
-              return target;
-          const val = Reflect.get(target, key, receiver);
-          track(target, key);
-          return typeof val === "object" ? reactive(val) : val;
-      },
-      set(target, key, value, receiver) {
-          const oldValue = target[key];
-          const result = Reflect.set(target, key, value, receiver);
-          if (value !== oldValue) {
-              trigger(target, key);
-          }
-          return result;
-      },
-      has(target, key) {
-          const result = Reflect.has(target, key);
-          track(target, key);
-          return result;
-      },
-      deleteProperty(target, key) {
-          const result = Reflect.deleteProperty(target, key);
-          trigger(target, key);
-          return result;
-      }
-  };
-  const reactive = (target) => {
-      if (typeof target !== "object")
-          return target;
-      if (target._raw)
-          return target;
-      let observed;
-      if (observed = raw2proxy.get(target)) {
-          return observed;
-      }
-      observed = new Proxy(target, baseHandler);
-      proxy2raw.set(observed, target);
-      return observed;
-  };
-  const toRaw = (target) => {
-      return proxy2raw.get(target) || target;
-  };
-  const markRaw = (target) => {
-      target._raw = true;
-      return target;
-  };
-
   const updateQueue = new Set();
   const readyToUpdate = (fn) => {
       updateQueue.add(fn);
   };
 
-  const Child = (data) => () => createVNode("span", {
-      style: {
-          "color": "blue"
-      }
-  }, data.count);
+  const Child = props => () => jsx("span", {
+    children: props.count
+  });
+
   function App() {
-      let state = reactive({
-          count: 0
-      });
-      onMounted(() => {
-          console.log("onMounted");
-      });
-      const handleClick = () => {
-          state.count++;
-      };
-      return () => createVNode("div", { onClick: handleClick }, createVNode(Child, {
-          props: {
-              count: state.count
-          }
-      }));
+    let state = reactive({
+      count: 0
+    });
+    return () => jsxs("div", {
+      style: {
+        color: "red"
+      },
+      onClick: () => {
+        state.count++;
+      },
+      children: [jsx(Child, {
+        count: state.count
+      }), jsx("div", {
+        children: "fuck"
+      })]
+    });
   }
-  const main = createVNode(App, {});
-  createApp(main).mount("#app");
+
+  createApp(jsx(App, {})).mount("#app");
 
   exports.VNode = VNode;
   exports.createApp = createApp;
   exports.createEffect = createEffect;
   exports.createRenderer = createRenderer;
-  exports.createVNode = createVNode;
   exports.effect = effect;
   exports.effectStack = effectStack;
+  exports.h = h;
+  exports.jsx = jsx;
+  exports.jsxs = jsxs;
   exports.markRaw = markRaw;
   exports.onMounted = onMounted;
   exports.onUnmounted = onUnmounted;

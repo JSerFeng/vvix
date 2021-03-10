@@ -1,7 +1,7 @@
-import { createVNode as h, VNode } from './lib/vdom'
+import { h, VNode } from './lib/vdom'
 import { createApp } from './lib/core'
 import { onMounted } from './lib/renderer'
-import { reactive } from 'lib/reactivity'
+import { reactive } from './lib/reactivity'
 
 const Child = (data: any) => () => h(
   "span",
@@ -39,10 +39,7 @@ function App(): () => VNode {
   )
 }
 
-const main: VNode = h(
-  App,
-  {},
-)
+const main: VNode = <App />
 
 createApp(main).mount("#app")
 
