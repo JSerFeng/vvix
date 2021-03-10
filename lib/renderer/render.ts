@@ -40,7 +40,7 @@ const baseNodeOps = {
     if (DomSpecialKeys.test(key)) {
       /**@ts-ignore */
       el[key] = value
-    } else {
+    } else if (key !== "key" && key !== "children") {
       el.setAttribute(key, value)
     }
   },
