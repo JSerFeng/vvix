@@ -11,16 +11,14 @@ const Child: FC<{ count?: number }> = (props) => {
 };
 
 const App: FC = () => {
-  const childRef = ref<{ msg: string } | null>(null);
+  const childRef = ref<{ msg: string }>();
+
   console.log(childRef.value);
   onMounted(() => {
     console.log(childRef.value);
   });
-  return () => (
-    <div>
-      <Child ref={childRef} />
-    </div>
-  );
+
+  return () => <Child ref={childRef} />;
 };
 
 createApp(<App />).mount("#app");

@@ -2,7 +2,7 @@ import { effect } from "../reactivity";
 import { isSameVNode, shallowEqual, _warn } from "lib/shared";
 import { ChildrenFlags, FC, VNode, VNodeChildren, VNodeFlags, VNodeInstance } from "lib/vdom";
 
-type RenderOption<Node = any, TextNode = any> = {
+export type NodeOps<Node = any, TextNode = any> = {
   createElement(type: string): Node,
   createTextNode(text: string): TextNode,
   appendChild(parent: Node, el: Node): void,
@@ -19,7 +19,7 @@ export interface Container extends HTMLElement {
 const DomSpecialKeys = /\[A-Z]|^(?:value|checked|selected|muted)$/
 let _currentMountingFC: VNodeInstance | null = null
 
-const baseNodeOps = {
+export const baseNodeOps: NodeOps = {
   createElement(type: string) {
     return document.createElement(type)
   },
@@ -94,7 +94,7 @@ const baseNodeOps = {
   }
 }
 
-export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
+export function createRenderer(nodeOps: NodeOps) {
   /**----------- Mount ------------- */
   function mount(vnode: VNode, container: Container) {
     const { flags } = vnode

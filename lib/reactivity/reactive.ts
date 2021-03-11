@@ -62,10 +62,14 @@ const isRef = <T>(ref: Ref<T> | any): ref is Ref<T> => {
 }
 export class Ref<T = any> {
   private _isRef: true = true
-  private _value: UnwrapRef<T>
+  private _value: UnwrapRef<T> | null
 
-  constructor(value: T) {
-    this._value = isObject(value) ? reactive(value) as UnwrapRef<T> : value as UnwrapRef<T>
+  constructor(value?: T) {
+    if (!value) {
+      this._value = null
+    } else {
+      this._value = isObject(value) ? reactive(value) as UnwrapRef<T> : value as UnwrapRef<T>
+    }
   }
 
   get value() {
@@ -81,7 +85,7 @@ export class Ref<T = any> {
   }
 }
 
-export const ref = <T>(value: T): Ref<T> => {
+export const ref = <T>(value?: T): Ref<T> => {
   if (isRef(value)) {
     return value as Ref<T>
   }

@@ -1,7 +1,10 @@
 import { Container, createRenderer } from "lib/renderer/render";
 import { VNode } from "../vdom";
+import { NodeOps, baseNodeOps } from '../renderer'
 
-export const createApp = (app: VNode) => {
+export const createApp = (app: VNode, nodeOps?: NodeOps) => {
+  const render = createRenderer(nodeOps || baseNodeOps)
+
   return {
     mount(container: string | Container | null) {
       if (!container) {
@@ -16,7 +19,6 @@ export const createApp = (app: VNode) => {
         }
       }
       container.innerHTML = ""
-      const render = createRenderer()
       render(app, container)
     }
   }

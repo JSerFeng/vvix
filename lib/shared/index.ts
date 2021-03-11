@@ -67,6 +67,6 @@ export const isArray = (value: any) => {
   return Array.isArray(value)
 }
 
-export const isObject = (value: any) => {
+export const isObject = (value: any): value is Object => {
   return typeof value === "object" && value !== null
 }
