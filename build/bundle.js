@@ -1,6 +1,24 @@
 var vvix = (function (exports) {
   'use strict';
 
+  const _warn = (msg) => {
+      console.warn(msg);
+  };
+  const isSameVNode = (v1, v2) => v1.flags === v2.flags && v1.type === v2.type;
+  const shallowEqual = (propsA, propsB) => {
+      if (Object.keys(propsA).length !== Object.keys(propsB).length)
+          return false;
+      for (const key in propsA) {
+          if (!(key in propsB) || propsA[key] !== propsB[key]) {
+              return false;
+          }
+      }
+      return true;
+  };
+  const isObject = (value) => {
+      return typeof value === "object" && value !== null;
+  };
+
   const effectStack = [];
   exports.activeEffect = null;
   function effect(fn, option = {
@@ -118,23 +136,32 @@ var vvix = (function (exports) {
       target._raw = true;
       return target;
   };
-
-  const _warn = (msg) => {
-      console.warn(msg);
+  const isRef = (ref) => {
+      return ref && !!ref._isRef;
   };
-  const isSameVNode = (v1, v2) => v1.flags === v2.flags && v1.type === v2.type;
-  const shallowEqual = (propsA, propsB) => {
-      if (Object.keys(propsA).length !== Object.keys(propsB).length)
-          return false;
-      for (const key in propsA) {
-          if (!(key in propsB) || propsA[key] !== propsB[key]) {
-              return false;
+  class Ref {
+      constructor(value) {
+          this._isRef = true;
+          this._value = isObject(value) ? reactive(value) : value;
+      }
+      get value() {
+          track(this, "value");
+          return this._value;
+      }
+      set value(value) {
+          if (value !== this._value) {
+              this._value = value;
+              trigger(this, "value");
           }
       }
-      return true;
+  }
+  const ref = (value) => {
+      if (isRef(value)) {
+          return value;
+      }
+      return new Ref(value);
   };
 
-  /** useRef */
   exports.VNodeFlags = void 0;
   (function (VNodeFlags) {
       VNodeFlags[VNodeFlags["Element"] = 1] = "Element";
@@ -325,7 +352,7 @@ var vvix = (function (exports) {
   function createRenderer(nodeOps = baseNodeOps) {
       /**----------- Mount ------------- */
       function mount(vnode, container) {
-          const { flags, childFlags, children } = vnode;
+          const { flags } = vnode;
           if (flags & exports.VNodeFlags.FC) {
               mountFC(vnode, container);
           }
@@ -382,6 +409,9 @@ var vvix = (function (exports) {
       function mountElement(vnode, container) {
           const { data, childFlags, children } = vnode;
           const el = (vnode.el = nodeOps.createElement(vnode.type));
+          if (data.ref) {
+              data.ref.value = el;
+          }
           for (const key in data) {
               nodeOps.patchData(el, key, data[key], null, exports.VNodeFlags.Element);
           }
@@ -587,22 +617,25 @@ var vvix = (function (exports) {
           }
       };
   }
-  function onMounted(fn) {
+  const onMounted = (fn) => {
       if (!_currentMountingFC) {
           _warn("hook must be called inside a function component");
       }
       else {
           _currentMountingFC._onMount.push(fn);
       }
-  }
-  function onUnmounted(fn) {
+  };
+  const onUnmounted = (fn) => {
       if (!_currentMountingFC) {
           _warn("hook must be called inside a function component");
       }
       else {
           _currentMountingFC._onUnmount.push(fn);
       }
-  }
+  };
+  const expose = (value) => {
+      _currentMountingFC._props.ref.value = value;
+  };
   const render = createRenderer(baseNodeOps);
 
   const createApp = (app) => {
@@ -631,29 +664,31 @@ var vvix = (function (exports) {
       updateQueue.add(fn);
   };
 
-  const Child = (props) => () => jsx(Fragment, { children: props.count }, void 0);
-  function App() {
-      let state = reactive({
-          count: 0,
+  const Child = (props) => {
+      expose({
+          msg: "hello world",
       });
+      return () => jsx(Fragment, { children: props.count }, void 0);
+  };
+  const App = () => {
+      const childRef = ref(null);
+      console.log(childRef.value);
       onMounted(() => {
-          console.log("onMounted");
+          console.log(childRef.value);
       });
-      const handleClick = () => {
-          state.count++;
-      };
-      return () => (jsx("div", Object.assign({ onClick: handleClick }, { children: jsx(Child, { count: state.count }, void 0) }), void 0));
-  }
-  const main = jsx(App, {}, void 0);
-  createApp(main).mount("#app");
+      return () => (jsx("div", { children: jsx(Child, { ref: childRef }, void 0) }, void 0));
+  };
+  createApp(jsx(App, {}, void 0)).mount("#app");
 
   exports.Fragment = Fragment;
+  exports.Ref = Ref;
   exports.VNode = VNode;
   exports.createApp = createApp;
   exports.createEffect = createEffect;
   exports.createRenderer = createRenderer;
   exports.effect = effect;
   exports.effectStack = effectStack;
+  exports.expose = expose;
   exports.h = h;
   exports.jsx = jsx;
   exports.jsxs = jsxs;
@@ -662,6 +697,7 @@ var vvix = (function (exports) {
   exports.onUnmounted = onUnmounted;
   exports.reactive = reactive;
   exports.readyToUpdate = readyToUpdate;
+  exports.ref = ref;
   exports.render = render;
   exports.stop = stop;
   exports.toRaw = toRaw;

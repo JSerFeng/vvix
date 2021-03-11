@@ -1,3 +1,4 @@
+import { isObject } from "lib/shared"
 import { track, trigger } from "./effect"
 
 const raw2proxy = new WeakMap<Record<any, any>, Record<any, any>>()
@@ -50,4 +51,39 @@ export const toRaw = (target: Record<any, any>) => {
 export const markRaw = (target: Record<any, any>) => {
   target._raw = true
   return target
+}
+
+export type UnwrapRef<T> = T extends Ref<T>
+  ? UnwrapRef<T["value"]>
+  : T
+
+const isRef = <T>(ref: Ref<T> | any): ref is Ref<T> => {
+  return ref && !!ref._isRef
+}
+export class Ref<T = any> {
+  private _isRef: true = true
+  private _value: UnwrapRef<T>
+
+  constructor(value: T) {
+    this._value = isObject(value) ? reactive(value) as UnwrapRef<T> : value as UnwrapRef<T>
+  }
+
+  get value() {
+    track(this, "value")
+    return this._value
+  }
+
+  set value(value) {
+    if (value !== this._value) {
+      this._value = value
+      trigger(this, "value")
+    }
+  }
+}
+
+export const ref = <T>(value: T): Ref<T> => {
+  if (isRef(value)) {
+    return value as Ref<T>
+  }
+  return new Ref(value)
 }

@@ -62,3 +62,11 @@ export const lis = (arr: number[]): number[] => {
   }
   return ret
 }
+
+export const isArray = (value: any) => {
+  return Array.isArray(value)
+}
+
+export const isObject = (value: any) => {
+  return typeof value === "object" && value !== null
+}

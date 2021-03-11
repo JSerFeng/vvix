@@ -97,7 +97,7 @@ const baseNodeOps = {
 export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
   /**----------- Mount ------------- */
   function mount(vnode: VNode, container: Container) {
-    const { flags, childFlags, children } = vnode
+    const { flags } = vnode
     if (flags & VNodeFlags.FC) {
       mountFC(vnode, container)
     } else if (flags & VNodeFlags.Element) {
@@ -157,6 +157,12 @@ export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
   function mountElement(vnode: VNode, container: Container) {
     const { data, childFlags, children } = vnode
     const el = (vnode.el = nodeOps.createElement(vnode.type as string))
+
+    if (data.ref) {
+      /**@ts-ignore */
+      data.ref.value = el
+    }
+
     for (const key in data) {
       nodeOps.patchData(el, key, data[key], null, VNodeFlags.Element)
     }
@@ -367,7 +373,7 @@ export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
   }
 }
 
-export function onMounted(fn: () => any) {
+export const onMounted = (fn: () => any) => {
   if (!_currentMountingFC) {
     _warn("hook must be called inside a function component")
   } else {
@@ -375,12 +381,16 @@ export function onMounted(fn: () => any) {
   }
 }
 
-export function onUnmounted(fn: () => any) {
+export const onUnmounted = (fn: () => any) => {
   if (!_currentMountingFC) {
     _warn("hook must be called inside a function component")
   } else {
     _currentMountingFC._onUnmount.push(fn)
   }
+}
+
+export const expose = (value: Record<any, any>) => {
+  _currentMountingFC!._props.ref!.value = value
 }
 
 export const render = createRenderer(baseNodeOps)

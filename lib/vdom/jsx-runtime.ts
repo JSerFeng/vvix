@@ -1,22 +1,16 @@
+import { Ref } from "lib/reactivity";
 import { Container } from "lib/renderer/render";
 import { _err } from "../shared";
 
 /** useRef */
-class VNodeReference<T> {
-  current: T | null = null
-  constructor(value?: T) {
-    this.current = value || null
-  }
-}
-
 export interface FC<T = any> {
-  (props?: T): () => VNode
+  (props: T & VNodeData): () => VNode
 }
 
 export type VNodeType = string | VNode | FC | null | Symbol
 
-type InternalProps<T = unknown> = Partial<{
-  ref: VNodeReference<T>,
+type InternalProps<T = any> = Partial<{
+  ref: Ref<T>,
   parent: VNode | null,
   dom: Element,
   style: Partial<CSSStyleDeclaration>,
@@ -109,7 +103,7 @@ export enum ChildrenFlags {
 }
 
 export interface VNodeInstance {
-  _props: Record<any, any>,
+  _props: VNodeData,
   _render: (() => VNode) | null,
   _mounted: boolean,
   _vnode: VNode | null,
