@@ -13,7 +13,7 @@ export interface FC<T = any> {
   (props?: T): () => VNode
 }
 
-export type VNodeType = string | VNode | FC | null
+export type VNodeType = string | VNode | FC | null | Symbol
 
 type InternalProps<T = unknown> = Partial<{
   ref: VNodeReference<T>,
@@ -99,7 +99,8 @@ export type VNodeChildren = VNode[] | VNode | string | null
 export enum VNodeFlags {
   Element = /*        */ 0b00000001,
   FC = /*             */ 0b00000010,
-  Text = /**          */ 0b00000100
+  Text = /**          */ 0b00000100,
+  Fragment = /**      */ 0b00001000,
 }
 export enum ChildrenFlags {
   Multiple = /*       */ 0b00000001,
@@ -116,6 +117,9 @@ export interface VNodeInstance {
   _onMount: (() => void)[],
   _onUnmount: (() => void)[],
 }
+
+export const Fragment = Symbol("Fragment")
+
 export class VNode {
   type: VNodeType
   data: VNodeData = {}
@@ -144,6 +148,8 @@ export class VNode {
       }
     } else if (typeof type === "string") {
       this.flags = VNodeFlags.Element
+    } else if (type === Fragment) {
+      this.flags = VNodeFlags.Fragment
     } else {
       this.flags = VNodeFlags.Text
     }
@@ -208,3 +214,31 @@ export const jsx = (type: VNodeType, data: VNodeData, key?: any) => {
 }
 
 export const jsxs = jsx
+
+
+interface JsxCommonProps {
+  className?: string
+  class?: string
+  style?: Partial<CSSStyleDeclaration>
+
+  ref?: any
+
+  onClick?: EventListener
+  onInput?: EventListener
+  onChange?: EventListener
+  onBlur?: EventListener
+  onFocus?: EventListener
+}
+export declare namespace JSX {
+  interface IntrinsicElements {
+    div: JsxCommonProps,
+    span: JsxCommonProps,
+    input: { value: any } & JsxCommonProps,
+    [k: string]: JsxCommonProps & {
+      [k: string]: any
+    }
+  }
+  interface ElementAttributesProperty {
+    className: string;
+  }
+}

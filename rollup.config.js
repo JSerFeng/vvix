@@ -25,11 +25,11 @@ export default {
     name: "vvix"
   },
   plugins: [
+    resolve(),
+    commonJsTransformer(),
     tsPlugin,
     babel({
       "exclude": 'node_modules/**', // 只编译我们的源代码
     }),
-    resolve(),
-    commonJsTransformer(),
   ]
 };

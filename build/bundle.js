@@ -42,7 +42,9 @@ var vvix = (function (exports) {
       const deps = depsMap.get(key);
       if (!deps)
           return;
-      deps.forEach(effect => effect());
+      deps.forEach(effect => {
+          effect !== exports.activeEffect && effect();
+      });
   };
   const targetMap = new WeakMap();
   const track = (target, key) => {
@@ -138,6 +140,7 @@ var vvix = (function (exports) {
       VNodeFlags[VNodeFlags["Element"] = 1] = "Element";
       VNodeFlags[VNodeFlags["FC"] = 2] = "FC";
       VNodeFlags[VNodeFlags["Text"] = 4] = "Text";
+      VNodeFlags[VNodeFlags["Fragment"] = 8] = "Fragment";
   })(exports.VNodeFlags || (exports.VNodeFlags = {}));
   exports.ChildrenFlags = void 0;
   (function (ChildrenFlags) {
@@ -145,6 +148,7 @@ var vvix = (function (exports) {
       ChildrenFlags[ChildrenFlags["Single"] = 2] = "Single";
       ChildrenFlags[ChildrenFlags["NoChildren"] = 8] = "NoChildren";
   })(exports.ChildrenFlags || (exports.ChildrenFlags = {}));
+  const Fragment = Symbol("Fragment");
   class VNode {
       constructor(type, data, children) {
           this.data = {};
@@ -170,6 +174,9 @@ var vvix = (function (exports) {
           }
           else if (typeof type === "string") {
               this.flags = exports.VNodeFlags.Element;
+          }
+          else if (type === Fragment) {
+              this.flags = exports.VNodeFlags.Fragment;
           }
           else {
               this.flags = exports.VNodeFlags.Text;
@@ -261,16 +268,20 @@ var vvix = (function (exports) {
               /**@ts-ignore */
               el[key] = value;
           }
-          else {
+          else if (key !== "key" && key !== "children") {
               el.setAttribute(key, value);
           }
       },
       setText(el, text) {
           return el.textContent = text;
       },
-      patchData(el, key, newVal, oldVal) {
+      patchData(el, key, newVal, oldVal, vnodeFlags) {
           if (newVal === oldVal)
               return;
+          if (vnodeFlags && (vnodeFlags & exports.VNodeFlags.Element) && (key === "key" ||
+              key === "children")) {
+              return;
+          }
           switch (key) {
               case "style":
                   if (newVal) {
@@ -321,15 +332,19 @@ var vvix = (function (exports) {
           else if (flags & exports.VNodeFlags.Element) {
               mountElement(vnode, container);
           }
-          else {
+          else if (flags & exports.VNodeFlags.Text) {
               mountTextChild(vnode, container);
           }
-          /**mount children */
+          else {
+              mountFragment(vnode, container);
+          }
+      }
+      function mountChildren(childFlags, children, vnode, container) {
           if (childFlags & exports.ChildrenFlags.NoChildren) {
               return;
           }
           if (childFlags & exports.ChildrenFlags.Single) {
-              mountSingleChild(vnode, children);
+              mount(children, container);
           }
           else if (childFlags & exports.ChildrenFlags.Multiple) {
               mountMultipleChildren(vnode, children);
@@ -365,12 +380,14 @@ var vvix = (function (exports) {
           });
       }
       function mountElement(vnode, container) {
-          const { data } = vnode;
+          const { data, childFlags, children } = vnode;
           const el = (vnode.el = nodeOps.createElement(vnode.type));
           for (const key in data) {
-              nodeOps.patchData(el, key, data[key], null);
+              nodeOps.patchData(el, key, data[key], null, exports.VNodeFlags.Element);
           }
           nodeOps.appendChild(container, el);
+          /**mount children */
+          mountChildren(childFlags, children, vnode, el);
       }
       function mountTextChild(vnode, container) {
           const textNode = nodeOps.createTextNode(vnode.children);
@@ -378,8 +395,16 @@ var vvix = (function (exports) {
           /**@ts-ignore */
           nodeOps.appendChild(container, textNode);
       }
-      function mountSingleChild(parent, child) {
-          mount(child, parent.el);
+      function mountFragment(vnode, container) {
+          const { children } = vnode;
+          if (Array.isArray(children)) {
+              children.forEach(c => mount(c, container));
+              vnode.el = children[0].el;
+          }
+          else if (children) {
+              mount(children, container);
+              vnode.el = children.el;
+          }
       }
       function mountMultipleChildren(parent, children) {
           for (const child of children) {
@@ -387,12 +412,20 @@ var vvix = (function (exports) {
           }
       }
       function unmount(vnode, container) {
-          const { flags } = vnode;
+          const { flags, children } = vnode;
           if (flags & exports.VNodeFlags.Element || flags & exports.VNodeFlags.Text) {
               nodeOps.removeChild(container, vnode.el);
           }
           else if (flags & exports.VNodeFlags.FC) {
               unmountFC(vnode, container);
+          }
+          else if (flags & exports.VNodeFlags.Fragment) {
+              if (Array.isArray(children)) {
+                  children.forEach(c => unmount(c, container));
+              }
+              else if (children) {
+                  unmount(children, container);
+              }
           }
       }
       function unmountFC(vnode, container) {
@@ -424,8 +457,11 @@ var vvix = (function (exports) {
                   else if (flags & exports.VNodeFlags.Text) {
                       patchTextVNode(newVNode, oldVNode);
                   }
-                  else {
+                  else if (flags & exports.VNodeFlags.Element) {
                       patchElement(newVNode, oldVNode);
+                  }
+                  else {
+                      patchFragment(newVNode, oldVNode);
                   }
               }
               else {
@@ -454,14 +490,14 @@ var vvix = (function (exports) {
           }
           newVNode._instance._update();
       }
-      function patchElement(newVNode, oldVNode, container) {
+      function patchElement(newVNode, oldVNode) {
           const el = (newVNode.el = oldVNode.el);
           for (const key in newVNode.data) {
-              nodeOps.patchData(el, key, newVNode.data[key], oldVNode.data[key]);
+              nodeOps.patchData(el, key, newVNode.data[key], oldVNode.data[key], exports.VNodeFlags.Element);
           }
           for (const key in oldVNode.data) {
               if (!newVNode.data[key]) {
-                  nodeOps.patchData(el, key, null, oldVNode.data[key]);
+                  nodeOps.patchData(el, key, null, oldVNode.data[key], exports.VNodeFlags.Element);
               }
           }
           patchChildren(newVNode, oldVNode);
@@ -471,6 +507,9 @@ var vvix = (function (exports) {
           if (newVNode.children !== oldVNode.children) {
               nodeOps.setText(el, newVNode.children);
           }
+      }
+      function patchFragment(newVNode, oldVNode) {
+          patchChildren(newVNode, oldVNode);
       }
       function replaceVNode(newVNode, oldVNode, container) {
           container.removeChild(oldVNode.el);
@@ -592,31 +631,23 @@ var vvix = (function (exports) {
       updateQueue.add(fn);
   };
 
-  const Child = props => () => jsx("span", {
-    children: props.count
-  });
-
+  const Child = (props) => () => jsx(Fragment, { children: props.count }, void 0);
   function App() {
-    let state = reactive({
-      count: 0
-    });
-    return () => jsxs("div", {
-      style: {
-        color: "red"
-      },
-      onClick: () => {
-        state.count++;
-      },
-      children: [jsx(Child, {
-        count: state.count
-      }), jsx("div", {
-        children: "fuck"
-      })]
-    });
+      let state = reactive({
+          count: 0,
+      });
+      onMounted(() => {
+          console.log("onMounted");
+      });
+      const handleClick = () => {
+          state.count++;
+      };
+      return () => (jsx("div", Object.assign({ onClick: handleClick }, { children: jsx(Child, { count: state.count }, void 0) }), void 0));
   }
+  const main = jsx(App, {}, void 0);
+  createApp(main).mount("#app");
 
-  createApp(jsx(App, {})).mount("#app");
-
+  exports.Fragment = Fragment;
   exports.VNode = VNode;
   exports.createApp = createApp;
   exports.createEffect = createEffect;

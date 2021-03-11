@@ -1,6 +1,6 @@
 import { effect } from "../reactivity";
 import { isSameVNode, shallowEqual, _warn } from "lib/shared";
-import { ChildrenFlags, FC, VNode, VNodeFlags, VNodeInstance } from "lib/vdom";
+import { ChildrenFlags, FC, VNode, VNodeChildren, VNodeFlags, VNodeInstance } from "lib/vdom";
 
 type RenderOption<Node = any, TextNode = any> = {
   createElement(type: string): Node,
@@ -10,7 +10,7 @@ type RenderOption<Node = any, TextNode = any> = {
   removeChild(parent: Node, el: Node): void,
   setAttribute(el: Node, key: any, value: any): void,
   setText(el: Node, text: string): void,
-  patchData(el: Node, key: any, newVal: any, oldVal: any): void
+  patchData(el: Node, key: any, newVal: any, oldVal: any, flag?: any): void
 }
 export interface Container extends HTMLElement {
   vnode?: VNode | null
@@ -47,8 +47,14 @@ const baseNodeOps = {
   setText(el: Container, text: string) {
     return el.textContent = text
   },
-  patchData(el: Container, key: string, newVal: any, oldVal: any) {
+  patchData(el: Container, key: string, newVal: any, oldVal: any, vnodeFlags?: VNodeFlags) {
     if (newVal === oldVal) return
+    if (vnodeFlags && (vnodeFlags & VNodeFlags.Element) && (
+      key === "key" ||
+      key === "children"
+    )) {
+      return
+    }
     switch (key) {
       case "style":
         if (newVal) {
@@ -96,16 +102,19 @@ export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
       mountFC(vnode, container)
     } else if (flags & VNodeFlags.Element) {
       mountElement(vnode, container)
-    } else {
+    } else if (flags & VNodeFlags.Text) {
       mountTextChild(vnode, container)
+    } else {
+      mountFragment(vnode, container)
     }
+  }
 
-    /**mount children */
+  function mountChildren(childFlags: ChildrenFlags, children: VNodeChildren, vnode: VNode, container: Container) {
     if (childFlags & ChildrenFlags.NoChildren) {
       return
     }
     if (childFlags & ChildrenFlags.Single) {
-      mountSingleChild(vnode, children as VNode)
+      mount(children as VNode, container)
     } else if (childFlags & ChildrenFlags.Multiple) {
       mountMultipleChildren(vnode, children as VNode[])
     }
@@ -146,12 +155,15 @@ export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
   }
 
   function mountElement(vnode: VNode, container: Container) {
-    const { data } = vnode
+    const { data, childFlags, children } = vnode
     const el = (vnode.el = nodeOps.createElement(vnode.type as string))
     for (const key in data) {
-      nodeOps.patchData(el, key, data[key], null)
+      nodeOps.patchData(el, key, data[key], null, VNodeFlags.Element)
     }
     nodeOps.appendChild(container, el)
+
+    /**mount children */
+    mountChildren(childFlags, children, vnode, el)
   }
 
   function mountTextChild(vnode: VNode, container: Container) {
@@ -161,8 +173,15 @@ export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
     nodeOps.appendChild(container, textNode)
   }
 
-  function mountSingleChild(parent: VNode, child: VNode) {
-    mount(child, parent.el!)
+  function mountFragment(vnode: VNode, container: Container) {
+    const { children } = vnode
+    if (Array.isArray(children)) {
+      (children as VNode[]).forEach(c => mount(c, container))
+      vnode.el = (children as VNode[])[0].el
+    } else if (children) {
+      mount(children as VNode, container)
+      vnode.el = (children as VNode).el
+    }
   }
 
   function mountMultipleChildren(parent: VNode, children: VNode[]) {
@@ -172,11 +191,17 @@ export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
   }
 
   function unmount(vnode: VNode, container: Container) {
-    const { flags } = vnode
+    const { flags, children } = vnode
     if (flags & VNodeFlags.Element || flags & VNodeFlags.Text) {
       nodeOps.removeChild(container, vnode.el!)
     } else if (flags & VNodeFlags.FC) {
       unmountFC(vnode, container)
+    } else if (flags & VNodeFlags.Fragment) {
+      if (Array.isArray(children)) {
+        children.forEach(c => unmount(c, container))
+      } else if (children) {
+        unmount(children as VNode, container)
+      }
     }
   }
 
@@ -213,8 +238,10 @@ export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
           patchFC(newVNode, oldVNode)
         } else if (flags & VNodeFlags.Text) {
           patchTextVNode(newVNode, oldVNode)
+        } else if (flags & VNodeFlags.Element) {
+          patchElement(newVNode, oldVNode)
         } else {
-          patchElement(newVNode, oldVNode, container)
+          patchFragment(newVNode, oldVNode)
         }
       } else {
         replaceVNode(newVNode, oldVNode, container)
@@ -244,14 +271,14 @@ export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
     newVNode._instance!._update!()
   }
 
-  function patchElement(newVNode: VNode, oldVNode: VNode, container: Container) {
+  function patchElement(newVNode: VNode, oldVNode: VNode) {
     const el = (newVNode.el = oldVNode.el!)
     for (const key in newVNode.data) {
-      nodeOps.patchData(el, key, newVNode.data[key], oldVNode.data[key])
+      nodeOps.patchData(el, key, newVNode.data[key], oldVNode.data[key], VNodeFlags.Element)
     }
     for (const key in oldVNode.data) {
       if (!newVNode.data[key]) {
-        nodeOps.patchData(el, key, null, oldVNode.data[key])
+        nodeOps.patchData(el, key, null, oldVNode.data[key], VNodeFlags.Element)
       }
     }
     patchChildren(newVNode, oldVNode)
@@ -262,6 +289,10 @@ export function createRenderer(nodeOps: RenderOption = baseNodeOps) {
     if (newVNode.children !== oldVNode.children) {
       nodeOps.setText(el, newVNode.children as string)
     }
+  }
+
+  function patchFragment(newVNode: VNode, oldVNode: VNode) {
+    patchChildren(newVNode, oldVNode)
   }
 
   function replaceVNode(newVNode: VNode, oldVNode: VNode, container: Container) {

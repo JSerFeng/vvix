@@ -54,7 +54,9 @@ export const trigger = (target: Record<any, any>, key: any) => {
   if (!depsMap) return
   const deps = depsMap.get(key)
   if (!deps) return
-  deps.forEach(effect => effect())
+  deps.forEach(effect => {
+    effect !== activeEffect && effect()
+  })
 }
 
 const targetMap = new WeakMap<Record<any, any>, Map<any, Set<Effect>>>()

@@ -6,18 +6,19 @@
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "node",
-    "allowJs": false,
+    "allowJs": true,
     "strict": true,
     "experimentalDecorators": true,
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "removeComments": false,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
+    "jsxImportSource": "./lib/vdom",
     "lib": ["esnext", "dom"],
     "rootDir": ".",
   },
   "include": [
     "./lib",
-    "./index.ts"
+    "./index.ts",
   ]
 }
