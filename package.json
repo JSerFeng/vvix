@@ -1,7 +1,7 @@
 {
   "name": "vvix",
-  "version": "beta alpha",
-  "description": "",
+  "version": "0.1.1",
+  "description": "a lite vue-like reactive jsx framework",
   "main": "./build/bundle.cjs.js",
   "module": "./build/bundle.esm.js",
   "scripts": {
@@ -12,7 +12,7 @@
     "coverage": "jest --coverage",
     "verbose": "npx jest --verbose"
   },
-  "author": "",
+  "author": "JSerFeng",
   "license": "ISC",
   "devDependencies": {
     "@babel/core": "^7.13.8",
@@ -22,9 +22,7 @@
     "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-node-resolve": "^5.2.0",
     "rollup-plugin-typescript2": "^0.30.0",
-    "ts-jest": "^26.5.3"
-  },
-  "dependencies": {
+    "ts-jest": "^26.5.3",
     "@babel/preset-react": "^7.12.13",
     "@types/react": "^17.0.3",
     "rollup-plugin-babel": "^4.4.0",
