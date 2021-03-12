@@ -24,7 +24,6 @@
     "rollup-plugin-typescript2": "^0.30.0",
     "ts-jest": "^26.5.3",
     "@babel/preset-react": "^7.12.13",
-    "@types/react": "^17.0.3",
     "rollup-plugin-babel": "^4.4.0",
     "rollup-plugin-livereload": "^2.0.0",
     "rollup-plugin-serve": "^1.1.0",
