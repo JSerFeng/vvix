@@ -3,6 +3,7 @@ import commonJsTransformer from 'rollup-plugin-commonjs'
 import ts from 'rollup-plugin-typescript2'
 import path from 'path'
 import babel from 'rollup-plugin-babel';
+import { terser } from 'rollup-plugin-terser';
 
 const extensions = [
   '.tsx',
@@ -17,12 +18,16 @@ const tsPlugin = ts({
 })
 
 export default {
-  input: "./index.ts", 
-  output: {
-    file: "./build/bundle.js",
-    format: "iife",
+  input: "./index.ts",
+  output: [{
+    file: "./build/bundle.cjs.js",
+    format: "cjs",
     name: "vvix"
-  },
+  }, {
+    file: "./build/bundle.esm.js",
+    format: "es",
+    name: "vvix"
+  }],
   plugins: [
     resolve(),
     commonJsTransformer(),
@@ -30,5 +35,6 @@ export default {
     babel({
       "exclude": 'node_modules/**', // 只编译我们的源代码
     }),
+    terser()
   ]
 };

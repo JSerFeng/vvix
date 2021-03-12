@@ -274,13 +274,14 @@ export function createRenderer(nodeOps: NodeOps) {
   }
 
   function patchFC(newVNode: VNode, oldVNode: VNode) {
+    newVNode.el = oldVNode.el
+    newVNode._instance = oldVNode._instance!
     if (bailout(newVNode, oldVNode)) {
       return
     }
 
     const newData = newVNode._instance!._props
     const oldData = oldVNode._instance!._props
-    newVNode._instance = oldVNode._instance!
 
     for (const key in newData) {
       if (newData[key] !== oldData[key]) {
@@ -428,9 +429,6 @@ export function createRenderer(nodeOps: NodeOps) {
             } else {
               pos = idx
             }
-            if (patchedNum >= nextLeftNum) {
-              break
-            }
           } else { /**移除 */
             unmount(prevVNode, container)
           }
@@ -471,6 +469,9 @@ export function createRenderer(nodeOps: NodeOps) {
   function bailout(v1: VNode, v2: VNode): boolean {
     const propsA = v1._instance!._props
     const propsB = v2._instance!._props
+
+    delete propsA.children
+    delete propsB.children
 
     return shallowEqual(propsA, propsB)
   }

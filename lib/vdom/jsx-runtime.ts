@@ -1,6 +1,6 @@
 import { Ref } from "../reactivity";
 import { Container } from "../renderer/render";
-import { _err } from "../shared";
+import { isDef, _err } from "../shared";
 
 /** useRef */
 export interface FC<T = any> {
@@ -149,7 +149,7 @@ export class VNode {
     }
 
     this.data = data
-    this.key = data.key || null
+    this.key = isDef(data.key) ? data.key : null
     const isChildrenArray = Array.isArray(children)
 
     /**确定children类型 */
@@ -221,6 +221,11 @@ interface JsxCommonProps {
   onClick?: EventListener
   onInput?: EventListener
   onChange?: EventListener
+  onKeyDown?: EventListener
+  onKeyUp?: EventListener
+  onMouseDown?: EventListener
+  onMouseUp?: EventListener
+  onMouseMove?: EventListener
   onBlur?: EventListener
   onFocus?: EventListener
 }
@@ -228,7 +233,20 @@ export declare namespace JSX {
   interface IntrinsicElements {
     div: JsxCommonProps,
     span: JsxCommonProps,
-    input: { value: any } & JsxCommonProps,
+    ul: JsxCommonProps,
+    li: JsxCommonProps,
+    h1: JsxCommonProps
+    h2: JsxCommonProps
+    h3: JsxCommonProps
+    h4: JsxCommonProps
+    h5: JsxCommonProps
+    h6: JsxCommonProps
+    img: { src: string, alt: string } & JsxCommonProps
+    button: JsxCommonProps
+    input: {
+      value: any,
+      type: "text" | "password" | "button" | "radio" | "checkbox" | "file" | "color" | "date"|"reset" | "submit" | string
+    } & JsxCommonProps,
     [k: string]: JsxCommonProps & {
       [k: string]: any
     }

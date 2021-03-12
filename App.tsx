@@ -1,46 +1,38 @@
 import { createApp } from "./lib/core";
-import { reactive, ref, toRaw } from "./lib/reactivity";
-import { expose, onMounted } from "lib/renderer";
+import { ref } from "./lib/reactivity";
 import { FC } from "./lib/vdom";
-
 interface Props {
-  count: number;
+  title: string;
+  content: string;
 }
 
-const Child: FC<Props> = (props) => {
-  expose({
-    msg: "hello world",
-  });
-
-  return () => <h1>{props.count}</h1>;
-};
+const MsgShow: FC<Props> = ({ title, content }) => () => (
+  <div>
+    <h1>{title}</h1>
+    <p>{content}</p>
+  </div>
+);
 
 const App: FC = () => {
-  const data = reactive([
-    {
-      id: 0,
-      msg: "lorem",
-    },
-    {
-      id: 1,
-      msg: "epsim",
-    },
-    {
-      id: 2,
-      msg: "update",
-    },
+  const data = ref([
+    { id: 0, title: "Johnson", content: "I love React" },
+    { id: 1, title: "Author", content: "And I love Vue more" },
+    { id: 2, title: "Jack", content: "But I hate webpack" },
   ]);
 
   const click = () => {
-    data.reverse();
+    data.value.reverse();
   };
 
   return () => (
-    <ul onClick={click}>
-      {data.map((item) => (
-        <li key={item.id}>{item.msg}</li>
-      ))}
-    </ul>
+    <>
+      <ul onClick={click}>
+        {data.value.map((item) => (
+          <MsgShow key={item.id} {...item} />
+        ))}
+      </ul>
+      <button>click me</button>
+    </>
   );
 };
 
