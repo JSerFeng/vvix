@@ -1,67 +1,73 @@
 import { NodeOps } from '../lib/renderer'
 
-class MockNode {
+let id = 0
+export class MockNode {
+  id: any
   type: string
-  parentNode: MockNode
-  children: (MockNode | TextNode)[]
+  parentNode: MockNode | null
+  children: MockNode[]
   textContent: string
   attrs: Record<any, any>
-  constructor(type: string) {
+  constructor(type: string, _id?: any) {
+    this.id = _id || id++
     this.type = type
     this.textContent = ""
     this.children = []
     this.parentNode = null
     this.attrs = {}
+    MockNode.Nodes.push(this)
   }
-  appendChild(node: MockNode | TextNode) {
+  appendChild(node: MockNode) {
     this.children.push(node)
   }
-  insertBefore(node: MockNode | TextNode, refNode: MockNode | TextNode) {
+  insertBefore(node: MockNode, refNode: MockNode) {
     const idx = this.children.indexOf(refNode)
     if (idx === -1) {
       throw `${node} is not the child of this node`
     }
     this.children.splice(idx, 0, node)
   }
-  removeChild(node: MockNode | TextNode) {
+  removeChild(node: MockNode) {
     const idx = this.children.indexOf(node)
     if (idx === -1) {
       throw `${node} is not the child of this node`
     }
     this.children.splice(idx, 1)
   }
-}
-
-class TextNode {
-  text: string
-  constructor(value: string) {
-    this.text = value
+  static findNode(id: any) {
+    return MockNode.Nodes.find(node => node.id === id)
   }
+  static Nodes: MockNode[] = []
 }
 
-export const nodeOps: NodeOps<MockNode> = {
-  createElement(type) {
+export const nodeEnvOps: NodeOps<MockNode> = {
+  getElement(name: any) {
+    return MockNode.findNode(name)
+  },
+  createElement(type: any) {
     return new MockNode(type)
   },
-  createTextNode(text) {
-    return new TextNode(text)
+  createTextNode(text: string) {
+    const node = new MockNode("text")
+    node.textContent = text
+    return node
   },
-  setText(node, text) {
+  setText(node: MockNode, text: string) {
     node.textContent = text
   },
-  appendChild(parent, el) {
+  appendChild(parent: MockNode, el: MockNode) {
     parent.appendChild(el)
   },
-  insertBefore(parent, node, refNode) {
+  insertBefore(parent: MockNode, node: MockNode, refNode: MockNode) {
     parent.insertBefore(node, refNode)
   },
-  removeChild(parent, node) {
+  removeChild(parent: MockNode, node: MockNode) {
     parent.removeChild(node)
   },
-  setAttribute(node, key, value) {
+  setAttribute(node: MockNode, key: any, value: any) {
     node.attrs[key] = value
   },
-  patchData(node, key, newVal) {
-    node[key] = newVal
+  patchData(node: MockNode, key: any, newVal: any) {
+    node.attrs[key] = newVal
   }
 }

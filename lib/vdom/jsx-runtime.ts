@@ -1,5 +1,5 @@
-import { Ref } from "lib/reactivity";
-import { Container } from "lib/renderer/render";
+import { Ref } from "../reactivity";
+import { Container } from "../renderer/render";
 import { _err } from "../shared";
 
 /** useRef */
@@ -122,7 +122,7 @@ export class VNode {
   flags: VNodeFlags
   children: VNodeChildren
   childFlags: ChildrenFlags
-  key: any = Symbol()
+  key: any
   _instance: VNodeInstance | null = null
   constructor(type: VNodeType, data: VNodeData, children: VNodeChildren) {
     this.type = type
@@ -149,6 +149,7 @@ export class VNode {
     }
 
     this.data = data
+    this.key = data.key || null
     const isChildrenArray = Array.isArray(children)
 
     /**确定children类型 */
@@ -214,7 +215,7 @@ interface JsxCommonProps {
   className?: string
   class?: string
   style?: Partial<CSSStyleDeclaration>
-
+  key?: any
   ref?: any
 
   onClick?: EventListener

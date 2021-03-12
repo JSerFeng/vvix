@@ -2,13 +2,34 @@ import {
   reactive, effect, toRaw, stop,
   markRaw
 } from '../lib/reactivity'
+import { scheduleRun } from '../lib/scheduler'
 
 // describe('reactivity/effect', () => {
-  it('should run the passed function once (wrapped by a effect)', () => {
-    const fnSpy = jest.fn(() => { })
-    effect(fnSpy)
-    expect(fnSpy).toHaveBeenCalledTimes(1)
+test('should run the passed function once (wrapped by a effect)', () => {
+  const fnSpy = jest.fn(() => { })
+  effect(fnSpy)
+
+  expect(fnSpy).toHaveBeenCalledTimes(1)
+})
+
+test("array reverse", () => {
+  const arr = reactive([1, 2, 3])
+  const fn = jest.fn(() => {
+    arr.map(c => console.log(c))
   })
+  effect(fn)
+  arr.reverse()
+  expect(fn).toHaveBeenCalledTimes(3)
+})
+
+test("schedule run", () => {
+  const arr = reactive([1, 2, 3])
+  const fn = jest.fn(() => {
+    arr.map(c => console.log(c))
+  })
+  arr.reverse()
+  expect(fn).toHaveBeenCalledTimes(3)
+})
 
 //   it('should observe basic properties', () => {
 //     let dummy

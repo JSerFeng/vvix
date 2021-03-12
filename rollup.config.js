@@ -17,9 +17,8 @@ const tsPlugin = ts({
 })
 
 export default {
-  // 核心选项
-  input: "./index.ts",     // 必须
-  output: {  // 必须 (如果要输出多个，可以是一个数组)
+  input: "./index.ts", 
+  output: {
     file: "./build/bundle.js",
     format: "iife",
     name: "vvix"

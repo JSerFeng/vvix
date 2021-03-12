@@ -15,12 +15,51 @@ var vvix = (function (exports) {
       }
       return true;
   };
+  const lis = (arr) => {
+      const len = arr.length;
+      if (len === 0)
+          return [];
+      if (len === 1)
+          return [0];
+      const res = new Array(len).fill(1);
+      const ret = [];
+      let idx = -1;
+      for (let i = len - 1; i >= 0; i--) {
+          const value1 = arr[i];
+          for (let j = i + 1; j < len; j++) {
+              const value2 = arr[j];
+              if (value1 < value2) {
+                  res[i] = Math.max(res[i], 1 + res[j]);
+                  if (idx === -1 || res[idx] < res[i]) {
+                      idx = i;
+                  }
+              }
+          }
+      }
+      if (idx === -1)
+          return [];
+      while (idx < len) {
+          const currValue = res[idx];
+          ret.push(idx++);
+          while (res[idx] !== currValue - 1 && idx < len) {
+              idx++;
+          }
+      }
+      return ret;
+  };
   const isObject = (value) => {
       return typeof value === "object" && value !== null;
+  };
+  const isUndef = (value) => {
+      return value === undefined || value === null;
+  };
+  const isDef = (value) => {
+      return value !== undefined && value !== null;
   };
 
   const effectStack = [];
   exports.activeEffect = null;
+  let pause = false;
   function effect(fn, option = {
       lazy: false,
       active: true
@@ -33,15 +72,11 @@ var vvix = (function (exports) {
   }
   function createEffect(fn, option) {
       const effect = function reactiveEffect(...args) {
-          if (reactiveEffect.active) {
-              try {
-                  if (!effectStack.includes(effect)) {
-                      effectStack.push(reactiveEffect);
-                  }
+          if (reactiveEffect.active && !pause) {
+              if (!effectStack.includes(effect)) {
+                  effectStack.push(reactiveEffect);
                   exports.activeEffect = effect;
-                  return fn(...args);
-              }
-              finally {
+                  fn(...args);
                   effectStack.pop();
                   exports.activeEffect = null;
               }
@@ -51,6 +86,7 @@ var vvix = (function (exports) {
       effect.active = option.active || true;
       effect.raw = fn;
       effect.deps = [];
+      effect.scheduler = (option.scheduler || null);
       return effect;
   }
   const trigger = (target, key) => {
@@ -61,7 +97,14 @@ var vvix = (function (exports) {
       if (!deps)
           return;
       deps.forEach(effect => {
-          effect !== exports.activeEffect && effect();
+          if (effect !== exports.activeEffect) {
+              if (effect.scheduler) {
+                  effect.scheduler(effect);
+              }
+              else {
+                  effect();
+              }
+          }
       });
   };
   const targetMap = new WeakMap();
@@ -83,6 +126,12 @@ var vvix = (function (exports) {
   };
   const stop = (effect) => {
       effect.active = false;
+  };
+  const pauseTracking = () => {
+      pause = true;
+  };
+  const resetTracking = () => {
+      pause = false;
   };
 
   const raw2proxy = new WeakMap();
@@ -142,7 +191,12 @@ var vvix = (function (exports) {
   class Ref {
       constructor(value) {
           this._isRef = true;
-          this._value = isObject(value) ? reactive(value) : value;
+          if (isUndef(value)) {
+              this._value = null;
+          }
+          else {
+              this._value = isObject(value) ? reactive(value) : value;
+          }
       }
       get value() {
           track(this, "value");
@@ -155,12 +209,15 @@ var vvix = (function (exports) {
           }
       }
   }
-  const ref = (value) => {
+  function ref(value) {
+      if (isUndef(value)) {
+          return new Ref();
+      }
       if (isRef(value)) {
           return value;
       }
       return new Ref(value);
-  };
+  }
 
   exports.VNodeFlags = void 0;
   (function (VNodeFlags) {
@@ -181,7 +238,6 @@ var vvix = (function (exports) {
           this.data = {};
           this._isVNode = true;
           this.el = null;
-          this.key = Symbol();
           this._instance = null;
           this.type = type;
           if (typeof type === "function") {
@@ -209,6 +265,7 @@ var vvix = (function (exports) {
               this.flags = exports.VNodeFlags.Text;
           }
           this.data = data;
+          this.key = data.key || null;
           const isChildrenArray = Array.isArray(children);
           /**确定children类型 */
           if (isChildrenArray) {
@@ -271,9 +328,29 @@ var vvix = (function (exports) {
   };
   const jsxs = jsx;
 
+  const updateQueue = [];
+  let flushing = false;
+  const queueJob = (fn) => {
+      if (!updateQueue.includes(fn)) {
+          updateQueue.push(fn);
+      }
+      if (!flushing) {
+          flushing = true;
+          Promise.resolve().then(flushWork);
+      }
+  };
+  const flushWork = () => {
+      updateQueue.forEach(cb => cb());
+      updateQueue.length = 0;
+      flushing = false;
+  };
+
   const DomSpecialKeys = /\[A-Z]|^(?:value|checked|selected|muted)$/;
   let _currentMountingFC = null;
   const baseNodeOps = {
+      getElement(name) {
+          return document.querySelector(name);
+      },
       createElement(type) {
           return document.createElement(type);
       },
@@ -305,8 +382,7 @@ var vvix = (function (exports) {
       patchData(el, key, newVal, oldVal, vnodeFlags) {
           if (newVal === oldVal)
               return;
-          if (vnodeFlags && (vnodeFlags & exports.VNodeFlags.Element) && (key === "key" ||
-              key === "children")) {
+          if (vnodeFlags && (vnodeFlags & exports.VNodeFlags.Element) && (key === "children")) {
               return;
           }
           switch (key) {
@@ -349,21 +425,23 @@ var vvix = (function (exports) {
           }
       }
   };
-  function createRenderer(nodeOps = baseNodeOps) {
+  function createRenderer(nodeOps) {
       /**----------- Mount ------------- */
-      function mount(vnode, container) {
+      function mount(vnode, container, refNode) {
+          if (isUndef(vnode))
+              return;
           const { flags } = vnode;
           if (flags & exports.VNodeFlags.FC) {
-              mountFC(vnode, container);
+              mountFC(vnode, container, refNode);
           }
           else if (flags & exports.VNodeFlags.Element) {
-              mountElement(vnode, container);
+              mountElement(vnode, container, refNode);
           }
           else if (flags & exports.VNodeFlags.Text) {
-              mountTextChild(vnode, container);
+              mountTextChild(vnode, container, refNode);
           }
           else {
-              mountFragment(vnode, container);
+              mountFragment(vnode, container, refNode);
           }
       }
       function mountChildren(childFlags, children, vnode, container) {
@@ -378,7 +456,7 @@ var vvix = (function (exports) {
           }
       }
       /**@TODO should handle the ref prop */
-      function mountFC(vnode, container) {
+      function mountFC(vnode, container, refNode) {
           const { type } = vnode;
           vnode._instance._update = () => {
               if (vnode._instance._mounted) {
@@ -391,7 +469,7 @@ var vvix = (function (exports) {
               else {
                   /**mount */
                   const newVNode = vnode._instance._vnode = vnode._instance._render();
-                  mount(newVNode, container);
+                  mount(newVNode, container, refNode);
                   vnode.el = newVNode.el;
                   vnode._instance._mounted = true;
                   for (const cb of vnode._instance._onMount) {
@@ -404,35 +482,47 @@ var vvix = (function (exports) {
           _currentMountingFC = null;
           effect(() => {
               vnode._instance._update();
+          }, {
+              scheduler: queueJob
           });
       }
-      function mountElement(vnode, container) {
+      function mountElement(vnode, container, refNode) {
           const { data, childFlags, children } = vnode;
           const el = (vnode.el = nodeOps.createElement(vnode.type));
           if (data.ref) {
+              /**@ts-ignore */
               data.ref.value = el;
           }
           for (const key in data) {
               nodeOps.patchData(el, key, data[key], null, exports.VNodeFlags.Element);
           }
-          nodeOps.appendChild(container, el);
+          if (refNode) {
+              nodeOps.insertBefore(container, el, refNode);
+          }
+          else {
+              nodeOps.appendChild(container, el);
+          }
           /**mount children */
           mountChildren(childFlags, children, vnode, el);
       }
-      function mountTextChild(vnode, container) {
+      function mountTextChild(vnode, container, refNode) {
           const textNode = nodeOps.createTextNode(vnode.children);
           vnode.el = textNode;
-          /**@ts-ignore */
-          nodeOps.appendChild(container, textNode);
+          if (refNode) {
+              nodeOps.insertBefore(container, textNode, refNode);
+          }
+          else {
+              nodeOps.appendChild(container, textNode);
+          }
       }
-      function mountFragment(vnode, container) {
+      function mountFragment(vnode, container, refNode) {
           const { children } = vnode;
           if (Array.isArray(children)) {
-              children.forEach(c => mount(c, container));
+              children.forEach(c => mount(c, container, refNode));
               vnode.el = children[0].el;
           }
           else if (children) {
-              mount(children, container);
+              mount(children, container, refNode);
               vnode.el = children.el;
           }
       }
@@ -585,11 +675,119 @@ var vvix = (function (exports) {
                   }
               }
               else if (oldFlag & exports.ChildrenFlags.Multiple) {
-                  for (const child of oldChildren) {
-                      unmount(child, el);
+                  patchMultipleChildren(newChildren, oldChildren, el);
+              }
+          }
+      }
+      function patchMultipleChildren(nextChildren, prevChildren, container) {
+          let i = 0;
+          let nextEnd = nextChildren.length - 1;
+          let nextVNode = nextChildren[i];
+          let prevEnd = prevChildren.length - 1;
+          let prevVNode = prevChildren[i];
+          outer: {
+              while (i <= nextEnd && i <= prevEnd) {
+                  if (nextVNode.key !== prevVNode.key) {
+                      break;
                   }
-                  for (const child of newChildren) {
-                      mount(child, el);
+                  patch(nextVNode, prevVNode, container);
+                  i++;
+                  if (i > nextEnd || i > prevEnd) {
+                      break outer;
+                  }
+                  nextVNode = nextChildren[i];
+                  prevVNode = prevChildren[i];
+              }
+              nextVNode = nextChildren[nextEnd];
+              prevVNode = prevChildren[prevEnd];
+              while (i <= nextEnd && i <= prevEnd) {
+                  if (nextVNode.key !== prevVNode.key) {
+                      break;
+                  }
+                  patch(nextVNode, prevVNode, container);
+                  nextEnd--;
+                  prevEnd--;
+                  if (i > nextEnd || i > prevEnd) {
+                      break outer;
+                  }
+                  nextVNode = nextChildren[nextEnd];
+                  prevVNode = prevChildren[prevEnd];
+              }
+          }
+          if (i > nextEnd && i <= prevEnd) {
+              for (let j = i; j <= prevEnd; j++) {
+                  unmount(prevChildren[j], container);
+              }
+          }
+          else if (i > prevEnd) {
+              const refNode = prevEnd + 1 >= prevChildren.length ? undefined : prevChildren[prevEnd + 1].el;
+              for (let j = i; j <= nextEnd; j++) {
+                  mount(nextChildren[j], container, refNode);
+              }
+          }
+          else {
+              let needMove = false;
+              let pos = 0;
+              let patchedNum = 0;
+              const nextLeftNum = nextEnd - i + 1;
+              const source = new Array(nextLeftNum).fill(-1);
+              const indexMap = {};
+              for (let j = 0; j < nextLeftNum; j++) {
+                  indexMap[nextChildren[i + j].key] = j;
+              }
+              for (let j = i; j <= prevEnd; j++) {
+                  prevVNode = prevChildren[j];
+                  if (patchedNum < nextLeftNum) {
+                      const idx = indexMap[prevVNode.key];
+                      if (isDef(idx)) {
+                          nextVNode = nextChildren[idx + i];
+                          patch(nextVNode, prevVNode, container);
+                          patchedNum++;
+                          source[idx] = j;
+                          if (idx < pos) {
+                              needMove = true;
+                          }
+                          else {
+                              pos = idx;
+                          }
+                          if (patchedNum >= nextLeftNum) {
+                              break;
+                          }
+                      }
+                      else { /**移除 */
+                          unmount(prevVNode, container);
+                      }
+                  }
+                  else {
+                      unmount(prevVNode, container);
+                  }
+              }
+              /**
+               *        [ 0  1  2  3  4 ]
+               * old      A  B  C  D  E
+               *
+               *             i        j
+               * new      A  C  B  F  D
+               * source [ 0  2  1 -1  3 ]
+               * seq          [ 2     4 ]
+               *                      s
+               */
+              if (needMove) {
+                  const seq = lis(source);
+                  let s = seq.length - 1;
+                  for (let j = nextEnd; j >= i; j--) {
+                      nextVNode = nextChildren[j];
+                      if (source[j] === -1) {
+                          const refNode = j + 1 < nextChildren.length ? nextChildren[j + 1].el : undefined;
+                          mount(nextVNode, container, refNode);
+                      }
+                      if (j === seq[s]) { /** no need for moving */
+                          s--;
+                      }
+                      else {
+                          const refNode = j + 1 < nextChildren.length ? nextChildren[j + 1].el : undefined;
+                          nodeOps.insertBefore(container, nextVNode.el, refNode);
+                      }
                   }
               }
           }
@@ -618,27 +816,34 @@ var vvix = (function (exports) {
       };
   }
   const onMounted = (fn) => {
-      if (!_currentMountingFC) {
-          _warn("hook must be called inside a function component");
-      }
-      else {
+      if (checkHookAvailable()) {
           _currentMountingFC._onMount.push(fn);
       }
   };
   const onUnmounted = (fn) => {
-      if (!_currentMountingFC) {
-          _warn("hook must be called inside a function component");
-      }
-      else {
+      if (checkHookAvailable()) {
           _currentMountingFC._onUnmount.push(fn);
       }
   };
   const expose = (value) => {
-      _currentMountingFC._props.ref.value = value;
+      if (checkHookAvailable()) {
+          _currentMountingFC._props.ref && (_currentMountingFC._props.ref.value = value);
+      }
+  };
+  const checkHookAvailable = () => {
+      if (!_currentMountingFC) {
+          _warn("hook must be called inside a function component");
+          return false;
+      }
+      return true;
   };
   const render = createRenderer(baseNodeOps);
 
-  const createApp = (app) => {
+  const createApp = (app, nodeOps) => {
+      if (!nodeOps) {
+          nodeOps = baseNodeOps;
+      }
+      const render = createRenderer(nodeOps);
       return {
           mount(container) {
               if (!container) {
@@ -646,43 +851,46 @@ var vvix = (function (exports) {
                   return;
               }
               if (typeof container === "string") {
-                  container = document.querySelector(container);
+                  container = nodeOps.getElement(container);
                   if (!container) {
                       console.warn("无效的id或者class");
                       return;
                   }
               }
-              container.innerHTML = "";
-              const render = createRenderer();
               render(app, container);
           }
       };
   };
 
-  const updateQueue = new Set();
-  const readyToUpdate = (fn) => {
-      updateQueue.add(fn);
-  };
-
-  const Child = (props) => {
-      expose({
-          msg: "hello world",
-      });
-      return () => jsx(Fragment, { children: props.count }, void 0);
-  };
   const App = () => {
-      const childRef = ref(null);
-      console.log(childRef.value);
-      onMounted(() => {
-          console.log(childRef.value);
-      });
-      return () => (jsx("div", { children: jsx(Child, { ref: childRef }, void 0) }, void 0));
+      const data = reactive([
+          {
+              id: 0,
+              msg: "lorem"
+          }, {
+              id: 1,
+              msg: "epsim"
+          }, {
+              id: 2,
+              msg: "update"
+          }
+      ]);
+      const click = () => {
+          data.reverse();
+      };
+      return () => {
+          console.log("render");
+          console.log(toRaw(data).slice());
+          return jsx("ul", Object.assign({ onClick: click }, { children: data.map(item => (jsx("li", { children: item.msg }, item.id))) }), void 0);
+      };
   };
   createApp(jsx(App, {}, void 0)).mount("#app");
 
   exports.Fragment = Fragment;
   exports.Ref = Ref;
   exports.VNode = VNode;
+  exports.baseNodeOps = baseNodeOps;
+  exports.checkHookAvailable = checkHookAvailable;
   exports.createApp = createApp;
   exports.createEffect = createEffect;
   exports.createRenderer = createRenderer;
@@ -695,10 +903,12 @@ var vvix = (function (exports) {
   exports.markRaw = markRaw;
   exports.onMounted = onMounted;
   exports.onUnmounted = onUnmounted;
+  exports.pauseTracking = pauseTracking;
+  exports.queueJob = queueJob;
   exports.reactive = reactive;
-  exports.readyToUpdate = readyToUpdate;
   exports.ref = ref;
   exports.render = render;
+  exports.resetTracking = resetTracking;
   exports.stop = stop;
   exports.toRaw = toRaw;
   exports.track = track;

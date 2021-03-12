@@ -1,7 +1,19 @@
-import { VNode } from "../vdom";
+const updateQueue: Function[] = []
 
-const updateQueue: WeakSet<() => VNode> = new Set()
+let flushing = false
 
-export const readyToUpdate = (fn: () => VNode) => {
-  updateQueue.add(fn)
+export const queueJob = (fn: () => void) => {
+  if (!updateQueue.includes(fn)) {
+    updateQueue.push(fn)
+  }
+  if (!flushing) {
+    flushing = true
+    Promise.resolve().then(flushWork)
+  }
+}
+
+const flushWork = () => {
+  updateQueue.forEach(cb => cb())
+  updateQueue.length = 0
+  flushing = false
 }

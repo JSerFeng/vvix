@@ -1,24 +1,47 @@
 import { createApp } from "./lib/core";
-import { ref } from "./lib/reactivity";
+import { reactive, ref, toRaw } from "./lib/reactivity";
 import { expose, onMounted } from "lib/renderer";
 import { FC } from "./lib/vdom";
 
-const Child: FC<{ count?: number }> = (props) => {
+interface Props {
+  count: number;
+}
+
+const Child: FC<Props> = (props) => {
   expose({
     msg: "hello world",
   });
-  return () => <>{props.count}</>;
+
+  return () => <h1>{props.count}</h1>;
 };
 
 const App: FC = () => {
-  const childRef = ref<{ msg: string }>();
+  const data = reactive([
+    {
+      id: 0,
+      msg: "lorem",
+    },
+    {
+      id: 1,
+      msg: "epsim",
+    },
+    {
+      id: 2,
+      msg: "update",
+    },
+  ]);
 
-  console.log(childRef.value);
-  onMounted(() => {
-    console.log(childRef.value);
-  });
+  const click = () => {
+    data.reverse();
+  };
 
-  return () => <Child ref={childRef} />;
+  return () => (
+    <ul onClick={click}>
+      {data.map((item) => (
+        <li key={item.id}>{item.msg}</li>
+      ))}
+    </ul>
+  );
 };
 
 createApp(<App />).mount("#app");

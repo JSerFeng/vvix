@@ -1,4 +1,4 @@
-import { Fn } from "lib/shared";
+import { Fn } from "../shared";
 
 export interface Effect {
   (...args: any[]): any
@@ -7,14 +7,17 @@ export interface Effect {
   _isEffect: true
   raw: Fn
   deps: Set<Effect>[]
+  scheduler: (job: Function) => void | null
 }
 interface Option {
   lazy: boolean
   active: boolean
+  scheduler: (job: () => any) => void
 }
 
 export const effectStack: Fn[] = []
 export let activeEffect: Effect | null = null
+let pause = false
 
 export function effect(fn: Fn, option: Partial<Option> = {
   lazy: false,
@@ -29,14 +32,11 @@ export function effect(fn: Fn, option: Partial<Option> = {
 
 export function createEffect(fn: Fn, option: Partial<Option>): Effect {
   const effect: Effect = function reactiveEffect(...args: any[]) {
-    if ((reactiveEffect as Effect).active) {
-      try {
-        if (!effectStack.includes(effect)) {
-          effectStack.push(reactiveEffect)
-        }
+    if ((reactiveEffect as Effect).active && !pause) {
+      if (!effectStack.includes(effect)) {
+        effectStack.push(reactiveEffect)
         activeEffect = effect
-        return fn(...args)
-      } finally {
+        fn(...args)
         effectStack.pop()
         activeEffect = null
       }
@@ -46,6 +46,7 @@ export function createEffect(fn: Fn, option: Partial<Option>): Effect {
   effect.active = option.active || true;
   effect.raw = fn
   effect.deps = []
+  effect.scheduler = (option.scheduler || null) as (job: Function) => void
   return effect
 }
 
@@ -55,7 +56,13 @@ export const trigger = (target: Record<any, any>, key: any) => {
   const deps = depsMap.get(key)
   if (!deps) return
   deps.forEach(effect => {
-    effect !== activeEffect && effect()
+    if (effect !== activeEffect) {
+      if (effect.scheduler) {
+        effect.scheduler(effect)
+      } else {
+        effect()
+      }
+    }
   })
 }
 
@@ -79,4 +86,12 @@ export const track = (target: Record<any, any>, key: any) => {
 
 export const stop = (effect: Effect) => {
   effect.active = false
+}
+
+export const pauseTracking = () => {
+  pause = true
+}
+
+export const resetTracking = () => {
+  pause = false
 }

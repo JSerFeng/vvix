@@ -1,4 +1,4 @@
-import { VNode } from "lib/vdom"
+import { VNode } from "../vdom"
 
 export interface LooseObj {
   [k: string]: any
@@ -69,4 +69,12 @@ export const isArray = (value: any) => {
 
 export const isObject = (value: any): value is Object => {
   return typeof value === "object" && value !== null
+}
+
+export const isUndef = (value: any): value is undefined | null => {
+  return value === undefined || value === null
+}
+
+export const isDef = (value: any): value is Object => {
+  return value !== undefined && value !== null
 }

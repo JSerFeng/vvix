@@ -1,4 +1,4 @@
-import { lis } from '../lib/renderer'
+import { lis } from '../lib/shared'
 
 test("lis", () => {
   expect(lis([])).toEqual([])

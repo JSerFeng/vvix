@@ -1,4 +1,4 @@
-import { isObject } from "lib/shared"
+import { isObject, isUndef } from "../shared"
 import { track, trigger } from "./effect"
 
 const raw2proxy = new WeakMap<Record<any, any>, Record<any, any>>()
@@ -53,20 +53,21 @@ export const markRaw = (target: Record<any, any>) => {
   return target
 }
 
-export type UnwrapRef<T> = T extends Ref<T>
-  ? UnwrapRef<T["value"]>
+export type UnwrapRef<T> = T extends Ref<any>
+  ? T["value"]
   : T
 
 const isRef = <T>(ref: Ref<T> | any): ref is Ref<T> => {
   return ref && !!ref._isRef
 }
-export class Ref<T = any> {
-  private _isRef: true = true
-  private _value: UnwrapRef<T> | null
+export class Ref<T> {
+  private _isRef: true
+  private _value: UnwrapRef<T>
 
   constructor(value?: T) {
-    if (!value) {
-      this._value = null
+    this._isRef = true
+    if (isUndef(value)) {
+      this._value = null as UnwrapRef<T>
     } else {
       this._value = isObject(value) ? reactive(value) as UnwrapRef<T> : value as UnwrapRef<T>
     }
@@ -85,9 +86,14 @@ export class Ref<T = any> {
   }
 }
 
-export const ref = <T>(value?: T): Ref<T> => {
-  if (isRef(value)) {
-    return value as Ref<T>
+export function ref<T>(): Ref<T | null>
+export function ref<T>(value: T): Ref<T>
+export function ref<T>(value?: T): Ref<T> {
+  if (isUndef(value)) {
+    return new Ref<T>()
+  }
+  if (isRef<T>(value)) {
+    return value
   }
   return new Ref(value)
 }
