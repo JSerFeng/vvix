@@ -1,29 +1,27 @@
-import { mount } from "../renderer/mount";
-import { Vdom } from "../vdom/vdom";
+import { Container, createRenderer } from "../renderer/render";
+import { VNode } from "../vdom";
+import { NodeOps, baseNodeOps } from '../renderer'
 
-export interface FC<T = {}> {
-  (props: T): () => Vdom
-}
+export const createApp = (app: VNode, nodeOps?: NodeOps) => {
+  if (!nodeOps) {
+    nodeOps = baseNodeOps
+  }
+  const render = createRenderer(nodeOps)
 
-export const createApp = (app: FC) => {
   return {
-    mount(mountName: string | Element | null) {
-      if (!mountName) {
+    mount(container: string | Container | any) {
+      if (!container) {
         console.warn("请指定一个挂在节点的id或者class或者dom节点");
         return
       }
-      if (typeof mountName === "string") {
-        mountName = document.querySelector(mountName)
-        if (!mountName) {
+      if (typeof container === "string") {
+        container = nodeOps!.getElement(container) as HTMLElement
+        if (!container) {
           console.warn("无效的id或者class");
           return
         }
       }
-      mountName.innerHTML = ""
-
-      const vdomCreator = app({})
-      const vdom = mount(vdomCreator())
-      mountName.appendChild(vdom)
+      render(app, container)
     }
   }
 }

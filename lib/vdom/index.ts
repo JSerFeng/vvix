@@ -1,3 +1,1 @@
-export {
-  Vdom
-} from './vdom'
+export * from './jsx-runtime'
