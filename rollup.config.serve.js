@@ -19,7 +19,7 @@ const tsPlugin = ts({
 })
 
 export default {
-  input: "./index.ts", 
+  input: "./lib/index.ts", 
   output: {
     file: "./build/bundle.js",
     format: "iife",

@@ -2,8 +2,9 @@
   "name": "vvix",
   "version": "0.1.10",
   "description": "a lite vue-like reactive jsx framework",
-  "main": "./build/bundle.esm.js",
+  "main": "./build/bundle.cjx.js",
   "module": "./build/bundle.esm.js",
+  "types": "./build/index.d.ts",
   "scripts": {
     "serve": "set NODE_ENV=dev && rollup -c ./rollup.config.serve.js -w",
     "build": "set NODE_ENV=prod && rollup -c ./rollup.config.prod.js",
