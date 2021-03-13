@@ -1,8 +1,8 @@
 {
   "name": "vvix",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "a lite vue-like reactive jsx framework",
-  "main": "./build/bundle.cjx.js",
+  "main": "./build/bundle.esm.js",
   "module": "./build/bundle.esm.js",
   "types": "./build/index.d.ts",
   "scripts": {
@@ -19,21 +19,25 @@
     "type": "git",
     "url": "git+https://github.com/JSerFeng/vvix"
   },
-  "keywords": ["typescript", "react-like", "vue-like"],
+  "keywords": [
+    "typescript",
+    "react-like",
+    "vue-like"
+  ],
   "devDependencies": {
-    "@babel/core": "^7.13.8",
+    "@babel/core": "^7.13.10",
     "@babel/preset-env": "^7.13.9",
+    "@babel/preset-react": "^7.12.13",
     "@types/jest": "^26.0.20",
     "jest": "^26.6.3",
-    "rollup-plugin-commonjs": "^10.1.0",
-    "rollup-plugin-node-resolve": "^5.2.0",
-    "rollup-plugin-typescript2": "^0.30.0",
-    "ts-jest": "^26.5.3",
-    "@babel/preset-react": "^7.12.13",
     "rollup-plugin-babel": "^4.4.0",
+    "rollup-plugin-commonjs": "^10.1.0",
     "rollup-plugin-livereload": "^2.0.0",
+    "rollup-plugin-node-resolve": "^5.2.0",
     "rollup-plugin-serve": "^1.1.0",
     "rollup-plugin-terser": "^7.0.2",
+    "rollup-plugin-typescript2": "^0.30.0",
+    "ts-jest": "^26.5.3",
     "typescript": "^4.2.3"
   }
 }
