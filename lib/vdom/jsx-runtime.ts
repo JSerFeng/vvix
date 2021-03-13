@@ -176,9 +176,8 @@ export class VNode {
           console.error(
             "[key property] can not be the same \n" +
             "duplicated key: \n" + c.key
-          );
-          break
-        } else {
+          );          break
+        } else if (isDef(c.key)) {
           keyMap[c.key] = true
         }
       }
