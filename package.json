@@ -1,10 +1,10 @@
 {
   "name": "vvix",
-  "version": "0.1.14",
+  "version": "0.1.15",
   "description": "a lite vue-like reactive jsx framework",
   "main": "./build/bundle.esm.js",
   "module": "./build/bundle.esm.js",
-  "types": "./build/index.d.ts",
+  "types": "./build/lib/index.d.ts",
   "scripts": {
     "serve": "rollup -c ./rollup.config.serve.js -w",
     "build": "rollup -c ./rollup.config.prod.js",
