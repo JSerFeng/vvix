@@ -1,8 +1,8 @@
 {
   "name": "vvix",
-  "version": "0.1.7",
+  "version": "0.1.10",
   "description": "a lite vue-like reactive jsx framework",
-  "main": "./build/bundle.cjs.js",
+  "main": "./build/bundle.esm.js",
   "module": "./build/index.d.ts",
   "scripts": {
     "serve": "set NODE_ENV=dev && rollup -c ./rollup.config.serve.js -w",
@@ -14,6 +14,11 @@
   },
   "author": "JSerFeng",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/JSerFeng/vvix"
+  },
+  "keywords": ["typescript", "react-like", "vue-like"],
   "devDependencies": {
     "@babel/core": "^7.13.8",
     "@babel/preset-env": "^7.13.9",

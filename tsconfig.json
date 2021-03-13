@@ -17,6 +17,7 @@
     "lib": ["esnext", "dom"],
     "rootDir": ".",
     "declaration": true, // 是否自动创建类型声明文件
+    "noEmit": true
   },
   "include": [
     "./lib",
