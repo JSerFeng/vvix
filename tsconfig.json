@@ -16,6 +16,7 @@
     "jsxImportSource": "./lib/vdom",
     "lib": ["esnext", "dom"],
     "rootDir": ".",
+    "declaration": true
   },
   "include": [
     "./lib",
