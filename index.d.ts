@@ -1,5 +1,5 @@
 declare module 'lib/vdom/jsx-runtime' {
-	import { Ref } from 'lib/reactivity';
+	import { Ref } from 'lib/reactivity/index';
 	import { Container } from 'lib/renderer/render';
 	/** useRef */
 	export interface FC<T = any> {
@@ -175,7 +175,7 @@ declare module 'lib/vdom/index' {
 
 }
 declare module 'lib/shared/index' {
-	import { VNode } from 'lib/vdom';
+	import { VNode } from 'lib/vdom/index';
 	export interface LooseObj {
 	    [k: string]: any;
 	}
@@ -194,7 +194,7 @@ declare module 'lib/shared/index' {
 
 }
 declare module 'lib/reactivity/effect' {
-	import { Fn } from 'lib/shared';
+	import { Fn } from 'lib/shared/index';
 	export interface Effect {
 	    (...args: any[]): any;
 	    lazy: boolean;
@@ -247,7 +247,7 @@ declare module 'lib/scheduler/index' {
 
 }
 declare module 'lib/renderer/render' {
-	import { VNode } from 'lib/vdom';
+	import { VNode } from 'lib/vdom/index';
 	export type NodeOps<Node = any, TextNode = any> = {
 	    getElement(...args: any[]): Node | undefined;
 	    createElement(type: string): Node;
@@ -277,8 +277,8 @@ declare module 'lib/renderer/index' {
 }
 declare module 'lib/core/index' {
 	import { Container } from 'lib/renderer/render';
-	import { VNode } from 'lib/vdom';
-	import { NodeOps } from 'lib/renderer';
+	import { VNode } from 'lib/vdom/index';
+	import { NodeOps } from 'lib/renderer/index';
 	export const createApp: (app: VNode, nodeOps?: NodeOps<any, any> | undefined) => {
 	    mount(container: string | Container | any): void;
 	};
@@ -450,10 +450,12 @@ declare module 'lib/vdom/domAttributes' {
 	}
 
 }
+
+
 declare module 'index' {
-	export * from 'lib/core';
-	export * from 'lib/reactivity';
-	export * from 'lib/renderer';
-	export * from 'lib/scheduler';
-	export * from 'lib/vdom';
+	export * from 'lib/core/index';
+	export * from 'lib/reactivity/index';
+	export * from 'lib/renderer/index';
+	export * from 'lib/scheduler/index';
+	export * from 'lib/vdom/index';
 }
