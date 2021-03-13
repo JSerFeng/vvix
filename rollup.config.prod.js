@@ -17,16 +17,22 @@ const tsPlugin = ts({
   extensions
 })
 
+
+const Global = `;const __DEV__ = false;`
+
+
 export default {
   input: "./lib/index.ts",
   output: [{
     file: "./build/bundle.cjs.js",
     format: "cjs",
-    name: "vvix"
+    name: "vvix",
+    banner: Global
   }, {
     file: "./build/bundle.esm.js",
     format: "es",
-    name: "vvix"
+    name: "vvix",
+    banner: Global
   }],
   plugins: [
     resolve(),

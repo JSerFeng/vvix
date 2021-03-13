@@ -1,6 +1,5 @@
 import { Ref } from "../reactivity";
 import { Container } from "../renderer/render";
-/** useRef */
 export interface FC<T = any> {
     (props: T & VNodeData): () => VNode;
 }
@@ -116,7 +115,7 @@ export declare class VNode {
     childFlags: ChildrenFlags;
     key: any;
     _instance: VNodeInstance | null;
-    constructor(type: VNodeType, data: VNodeData, children: VNodeChildren);
+    constructor(type: VNodeType, data: VNodeData, children: VNodeChildren, key?: any);
 }
 export declare function h(type: VNodeType, data?: VNodeData | null, ...children: (VNode | Object)[]): VNode;
 export declare const jsx: (type: VNodeType, data: VNodeData, key?: any) => VNode;

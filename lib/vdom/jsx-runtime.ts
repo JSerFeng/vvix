@@ -1,8 +1,7 @@
 import { Ref } from "../reactivity";
 import { Container } from "../renderer/render";
-import { isDef, _err } from "../shared";
+import { isDef, isObject, _err } from "../shared";
 
-/** useRef */
 export interface FC<T = any> {
   (props: T & VNodeData): () => VNode
 }
@@ -124,7 +123,7 @@ export class VNode {
   childFlags: ChildrenFlags
   key: any
   _instance: VNodeInstance | null = null
-  constructor(type: VNodeType, data: VNodeData, children: VNodeChildren) {
+  constructor(type: VNodeType, data: VNodeData, children: VNodeChildren, key?: any) {
     this.type = type
     if (typeof type === "function") {
       this.flags = VNodeFlags.FC
@@ -148,30 +147,57 @@ export class VNode {
       this.flags = VNodeFlags.Text
     }
 
+    if (isDef(key)) {
+      this.key = key
+    } else if (isDef(data.key)) {
+      this.key = data.key
+      delete data.key
+    } else {
+      this.key = null
+    }
     this.data = data
-    this.key = isDef(data.key) ? data.key : null
+
     const isChildrenArray = Array.isArray(children)
 
     /**确定children类型 */
     if (isChildrenArray) {
       /**是数组 */
       this.children = (children as VNode[]).map(c => {
-        if (typeof c === 'string') {
-          return h(null, null, c)
+        if (!isObject(c)) {
+          /**@ts-ignore */
+          return h(null, null, c.toString())
         }
         return c
       })
+      /**@ts-ignore check if key property exist*/
+      if (__DEV__) {
+        const keyMap: Record<any, any> = {}
+        for (const c of this.children) {
+          if (isDef(keyMap[c.key])) {
+            console.error(
+              "[key property] can not be the same \n" +
+              "duplicated key: \n" + c.key
+            );
+            break
+          } else {
+            keyMap[c.key] = true
+          }
+        }
+      }
+
       this.childFlags = ChildrenFlags.Multiple
-    } else if (typeof children === "object" && children !== null) {
+    } else if (isObject(children)) {
       this.children = children
       this.childFlags = ChildrenFlags.Single
-    } else if (typeof children === "string") {
+    } else if (isDef(children)) {
       if (this.flags & VNodeFlags.Text) {
         this.childFlags = ChildrenFlags.NoChildren
-        this.children = children
+        /**@ts-ignore */
+        this.children = children.toString()
       } else {
         this.childFlags = ChildrenFlags.Single
-        this.children = h(null, null, children)
+        /**@ts-ignore */
+        this.children = h(null, null, children.toString())
       }
     } else {
       this.childFlags = ChildrenFlags.NoChildren
@@ -199,13 +225,7 @@ export function h(type: VNodeType, data?: VNodeData | null, ...children: (VNode 
 
 export const jsx = (type: VNodeType, data: VNodeData, key?: any) => {
   let { children } = data
-  if (children === undefined) {
-    children = []
-  } else if (!Array.isArray(children)) {
-    /**@ts-ignore */
-    children = [children]
-  }
-  return h(type, { key, ...data }, ...children as VNode[])
+  return new VNode(type, data, children as VNodeChildren, key)
 }
 
 export const jsxs = jsx
@@ -245,7 +265,7 @@ export declare namespace JSX {
     button: JsxCommonProps
     input: {
       value: any,
-      type: "text" | "password" | "button" | "radio" | "checkbox" | "file" | "color" | "date"|"reset" | "submit" | string
+      type: "text" | "password" | "button" | "radio" | "checkbox" | "file" | "color" | "date" | "reset" | "submit" | string
     } & JsxCommonProps,
     [k: string]: JsxCommonProps & {
       [k: string]: any
