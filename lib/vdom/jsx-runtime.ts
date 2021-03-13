@@ -170,18 +170,16 @@ export class VNode {
         return c
       })
       /**@ts-ignore check if key property exist*/
-      if (__DEV__) {
-        const keyMap: Record<any, any> = {}
-        for (const c of this.children) {
-          if (isDef(keyMap[c.key])) {
-            console.error(
-              "[key property] can not be the same \n" +
-              "duplicated key: \n" + c.key
-            );
-            break
-          } else {
-            keyMap[c.key] = true
-          }
+      const keyMap: Record<any, any> = {}
+      for (const c of this.children) {
+        if (isDef(keyMap[c.key])) {
+          console.error(
+            "[key property] can not be the same \n" +
+            "duplicated key: \n" + c.key
+          );
+          break
+        } else {
+          keyMap[c.key] = true
         }
       }
 

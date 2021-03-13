@@ -30,7 +30,18 @@ disadvantages
 
 - reactivity is not as strong as vue3,  not support Map and Set yet, hope I will fix it later , hope so...
 
+API:
 
+```
+
+const state = reactive({
+  count: 0
+})
+
+const msg = ref("hello")
+msg.value = "world"
+
+```
 
 作者大学生佛系更新，欢迎提出好的PR和star  ^_^
 

@@ -514,9 +514,7 @@ export const expose = (value: Record<any, any>) => {
 export const checkHookAvailable = () => {
   if (!_currentMountingFC) {
     /**@ts-ignore */
-    if (__DEV__) {
-      _warn("hook must be called inside a function component")
-    }
+    _warn("hook must be called inside a function component")
     return false
   }
   return true
