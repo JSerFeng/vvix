@@ -3,7 +3,7 @@
   "version": "0.1.10",
   "description": "a lite vue-like reactive jsx framework",
   "main": "./build/bundle.esm.js",
-  "module": "./build/index.d.ts",
+  "module": "./build/bundle.esm.js",
   "scripts": {
     "serve": "set NODE_ENV=dev && rollup -c ./rollup.config.serve.js -w",
     "build": "set NODE_ENV=prod && rollup -c ./rollup.config.prod.js",
