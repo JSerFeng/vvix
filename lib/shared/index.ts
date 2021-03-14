@@ -63,7 +63,7 @@ export const lis = (arr: number[]): number[] => {
   return ret
 }
 
-export const isArray = (value: any) => {
+export const isArray = <T>(value: T[] | any): value is T[] => {
   return Array.isArray(value)
 }
 

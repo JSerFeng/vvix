@@ -53,11 +53,12 @@ export const markRaw = (target: Record<any, any>) => {
   return target
 }
 
+
 export type UnwrapRef<T> = T extends Ref<any>
   ? T["value"]
   : T
 
-const isRef = <T>(ref: Ref<T> | any): ref is Ref<T> => {
+export const isRef = <T>(ref: Ref<T> | any): ref is Ref<T> => {
   return ref && !!ref._isRef
 }
 export class Ref<T> {
@@ -86,9 +87,9 @@ export class Ref<T> {
   }
 }
 
-export function ref<T>(): Ref<T | null>
-export function ref<T>(value: T): Ref<T>
-export function ref<T>(value?: T): Ref<T> {
+export function ref<T = null>(): Ref<T | null>
+export function ref<T = null>(value: T): Ref<T>
+export function ref<T = null>(value?: T): Ref<T> {
   if (isUndef(value)) {
     return new Ref<T>()
   }

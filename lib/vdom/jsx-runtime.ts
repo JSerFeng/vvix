@@ -1,6 +1,6 @@
 import { Ref } from "../reactivity";
 import { Container } from "../renderer/render";
-import { isDef, isObject, _err } from "../shared";
+import { isArray, isDef, isObject, _err } from "../shared";
 
 export interface FC<T = any> {
   (props: T & VNodeData): () => VNode
@@ -222,6 +222,18 @@ export function h(type: VNodeType, data?: VNodeData | null, ...children: (VNode 
 
 export const jsx = (type: VNodeType, data: VNodeData, key?: any) => {
   let { children } = data
+  if (isArray(children)) {
+    let needFlat = false
+    for (const c of children) {
+      if (isArray(c)) {
+        needFlat = true
+        break
+      }
+    }
+    if (needFlat) {
+      children = children.flat()
+    }
+  }
   return new VNode(type, data, children as VNodeChildren, key)
 }
 
