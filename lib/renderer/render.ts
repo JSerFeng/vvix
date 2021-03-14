@@ -242,6 +242,7 @@ export function createRenderer(nodeOps: NodeOps) {
         cb()
       }
     }
+    vnode._instance = null
     container.removeChild(el)
   }
 
@@ -418,11 +419,13 @@ export function createRenderer(nodeOps: NodeOps) {
       const nextLeftNum = nextEnd - i + 1
       const source = new Array(nextLeftNum).fill(-1)
       const indexMap: Record<any, any> = {}
+      const prevKeyMap: Record<any, any> = {}
       for (let j = 0; j < nextLeftNum; j++) {
         indexMap[nextChildren[i + j].key] = j
       }
       for (let j = i; j <= prevEnd; j++) {
         prevVNode = prevChildren[j]
+        prevKeyMap[prevVNode.key] = true
         if (patchedNum < nextLeftNum) {
           const idx = indexMap[prevVNode.key]
           if (isDef(idx)) {
@@ -466,6 +469,14 @@ export function createRenderer(nodeOps: NodeOps) {
           } else {
             const refNode = j + 1 < nextChildren.length ? nextChildren[j + 1].el! : undefined
             nodeOps.insertBefore(container, nextVNode.el, refNode)
+          }
+        }
+      } else {
+        for (let j = nextEnd; j >= i; j--) {
+          nextVNode = nextChildren[j]
+          if (!prevKeyMap[nextVNode.key]) {
+            const refNode = j + 1 >= nextChildren.length ? undefined : nextChildren[j + 1].el!
+            mount(nextVNode, container, refNode)
           }
         }
       }

@@ -165,7 +165,7 @@ export class VNode {
       this.children = (children as VNode[]).map(c => {
         if (!isObject(c)) {
           /**@ts-ignore */
-          return h(null, null, c.toString())
+          return h(null, null, c + "")
         }
         return c
       })

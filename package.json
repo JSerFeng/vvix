@@ -1,6 +1,6 @@
 {
   "name": "vvix",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "a lite vue-like reactive jsx framework",
   "main": "./build/bundle.esm.js",
   "module": "./build/bundle.esm.js",
