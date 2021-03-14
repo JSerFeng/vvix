@@ -94,7 +94,9 @@ export enum VNodeFlags {
   FC = /*             */ 0b00000010,
   Text = /**          */ 0b00000100,
   Fragment = /**      */ 0b00001000,
+  Portal = /**        */ 0b00010000
 }
+
 export enum ChildrenFlags {
   Multiple = /*       */ 0b00000001,
   Single = /*         */ 0b00000010,
@@ -112,6 +114,7 @@ export interface VNodeInstance {
 }
 
 export const Fragment = Symbol("Fragment")
+export const Portal = Symbol("Portal")
 
 export class VNode {
   type: VNodeType
@@ -143,6 +146,8 @@ export class VNode {
       this.flags = VNodeFlags.Element
     } else if (type === Fragment) {
       this.flags = VNodeFlags.Fragment
+    } else if (type === Portal) {
+      this.flags = VNodeFlags.Portal
     } else {
       this.flags = VNodeFlags.Text
     }
@@ -169,18 +174,6 @@ export class VNode {
         }
         return c
       })
-      /**@ts-ignore check if key property exist*/
-      const keyMap: Record<any, any> = {}
-      for (const c of this.children) {
-        if (isDef(keyMap[c.key])) {
-          console.error(
-            "[key property] can not be the same \n" +
-            "duplicated key: \n" + c.key
-          );          break
-        } else if (isDef(c.key)) {
-          keyMap[c.key] = true
-        }
-      }
 
       this.childFlags = ChildrenFlags.Multiple
     } else if (isObject(children)) {
@@ -201,6 +194,21 @@ export class VNode {
       this.children = null
     }
   }
+}
+
+
+export function createPortal<Props>(component: FC<Props>, container: Container | string): FC<Props>;
+export function createPortal(component: VNode, container: Container | string): FC;
+export function createPortal(component: VNode | FC, container: Container | string) {
+  const Fc: FC = (props) => {
+    if (typeof component === "function") {
+      component = jsx(component, props)
+    }
+    return () => jsx(Portal, {
+      children: component as VNodeChildren
+    }, container)
+  }
+  return Fc
 }
 
 export function h(type: VNodeType, data?: VNodeData | null, ...children: (VNode | Object)[]): VNode {
@@ -224,13 +232,30 @@ export const jsx = (type: VNodeType, data: VNodeData, key?: any) => {
   let { children } = data
   if (isArray(children)) {
     let needFlat = false
+    let arrToBeFlat: VNode[] = []
     for (const c of children) {
       if (isArray(c)) {
         needFlat = true
+        arrToBeFlat = c as VNode[]
         break
       }
     }
     if (needFlat) {
+      /**@ts-ignore check if key property exist*/
+      const keyMap: Record<any, any> = {}
+      for (const c of arrToBeFlat) {
+        if (!isDef(c.key)) {
+          console.error("child in an array must have a key \n")
+        } else if (c.key in keyMap) {
+          console.error(
+            "[key property] can not be the same \n" +
+            "duplicated key: \n" + c.key
+          )
+          break
+        } else {
+          keyMap[c.key] = true
+        }
+      }
       children = children.flat()
     }
   }

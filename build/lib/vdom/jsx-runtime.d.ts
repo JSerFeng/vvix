@@ -88,7 +88,8 @@ export declare enum VNodeFlags {
     Element = 1,
     FC = 2,
     Text = /**          */ 4,
-    Fragment = /**      */ 8
+    Fragment = /**      */ 8,
+    Portal = /**        */ 16
 }
 export declare enum ChildrenFlags {
     Multiple = 1,
@@ -105,6 +106,7 @@ export interface VNodeInstance {
     _onUnmount: (() => void)[];
 }
 export declare const Fragment: unique symbol;
+export declare const Portal: unique symbol;
 export declare class VNode {
     type: VNodeType;
     data: VNodeData;
@@ -117,6 +119,8 @@ export declare class VNode {
     _instance: VNodeInstance | null;
     constructor(type: VNodeType, data: VNodeData, children: VNodeChildren, key?: any);
 }
+export declare function createPortal<Props>(component: FC<Props>, container: Container | string): FC<Props>;
+export declare function createPortal(component: VNode, container: Container | string): FC;
 export declare function h(type: VNodeType, data?: VNodeData | null, ...children: (VNode | Object)[]): VNode;
 export declare const jsx: (type: VNodeType, data: VNodeData, key?: any) => VNode;
 export declare const jsxs: (type: VNodeType, data: VNodeData, key?: any) => VNode;

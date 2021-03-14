@@ -1,6 +1,6 @@
 import { effect } from "../reactivity";
 import { isDef, isSameVNode, isUndef, lis, shallowEqual, _warn } from "../shared";
-import { ChildrenFlags, FC, VNode, VNodeChildren, VNodeFlags, VNodeInstance } from "../vdom";
+import { ChildrenFlags, FC, Portal, VNode, VNodeChildren, VNodeFlags, VNodeInstance } from "../vdom";
 import { queueJob } from "../scheduler";
 
 export type NodeOps<Node = any, TextNode = any> = {
@@ -14,6 +14,7 @@ export type NodeOps<Node = any, TextNode = any> = {
   setText(el: Node, text: string): void,
   patchData(el: Node, key: any, newVal: any, oldVal: any, flag?: any): void
 }
+
 export interface Container extends HTMLElement {
   vnode?: VNode | null
 }
@@ -109,6 +110,8 @@ export function createRenderer(nodeOps: NodeOps) {
       mountElement(vnode, container, refNode)
     } else if (flags & VNodeFlags.Text) {
       mountTextChild(vnode, container, refNode)
+    } else if (flags & VNodeFlags.Portal) {
+      mountPortal(vnode)
     } else {
       mountFragment(vnode, container, refNode)
     }
@@ -125,7 +128,14 @@ export function createRenderer(nodeOps: NodeOps) {
     }
   }
 
-  /**@TODO should handle the ref prop */
+  function mountPortal(vnode: VNode) {
+    const el = vnode.el = typeof vnode.key === "string"
+      ? nodeOps.getElement(vnode.key)
+      : vnode.key
+    const childVnode = vnode.children as VNode
+    mount(childVnode, el)
+  }
+
   function mountFC(vnode: VNode, container: Container, refNode?: Container) {
     const { type } = vnode
     vnode._instance!._update = () => {
@@ -222,6 +232,9 @@ export function createRenderer(nodeOps: NodeOps) {
       } else if (children) {
         unmount(children as VNode, container)
       }
+    } else if (flags & VNodeFlags.Portal) {
+      const el = vnode.el as Container
+      unmount(vnode.children as VNode, el)
     }
   }
 
@@ -243,13 +256,13 @@ export function createRenderer(nodeOps: NodeOps) {
       }
     }
     vnode._instance = null
-    container.removeChild(el)
+    nodeOps.removeChild(container, el)
   }
 
   /**----------- Update ------------- */
   function patch(
-    newVNode: VNode | null,
-    oldVNode: VNode | null,
+    newVNode: VNode | null | undefined,
+    oldVNode: VNode | null | undefined,
     container: Container
   ) {
     if (newVNode && oldVNode) {
@@ -261,6 +274,8 @@ export function createRenderer(nodeOps: NodeOps) {
           patchTextVNode(newVNode, oldVNode)
         } else if (flags & VNodeFlags.Element) {
           patchElement(newVNode, oldVNode)
+        } else if (flags & VNodeFlags.Portal) {
+          patchPortal(newVNode, oldVNode)
         } else {
           patchFragment(newVNode, oldVNode, container)
         }
@@ -270,7 +285,7 @@ export function createRenderer(nodeOps: NodeOps) {
     } else if (newVNode) {
       mount(newVNode, container)
     } else if (oldVNode) {
-      nodeOps.removeChild(container, oldVNode.el!)
+      unmount(oldVNode, container)
     }
   }
 
@@ -317,6 +332,11 @@ export function createRenderer(nodeOps: NodeOps) {
     patchChildren(newVNode, oldVNode, container)
   }
 
+  function patchPortal(newVNode: VNode, oldVNode: VNode) {
+    const el = oldVNode.el!
+    patch(newVNode.children as VNode, oldVNode.children as VNode, el)
+  }
+
   function replaceVNode(newVNode: VNode, oldVNode: VNode, container: Container) {
     container.removeChild(oldVNode.el!)
     mount(newVNode, container)
@@ -330,13 +350,15 @@ export function createRenderer(nodeOps: NodeOps) {
     const { childFlags: newFlag, children: newChildren } = newVNode
     const { childFlags: oldFlag, children: oldChildren } = oldVNode
 
-    const el = container || oldVNode.el
+    /**el is string only when vnode is a portal */
+    const el = container || oldVNode.el as Container
+
     if (newFlag & ChildrenFlags.NoChildren) {
       if (oldFlag & ChildrenFlags.Single) {
-        unmount(oldChildren as VNode, el!)
+        unmount(oldChildren as VNode, el)
       } else if (oldFlag & ChildrenFlags.Multiple) {
         for (const child of (oldChildren as VNode[])) {
-          unmount(child, el!)
+          unmount(child, el)
         }
       }
     } else if (newFlag & ChildrenFlags.Single) {
@@ -495,18 +517,7 @@ export function createRenderer(nodeOps: NodeOps) {
 
   return function renderer(vnode: VNode, container: Container) {
     const oldVNode = container.vnode
-    if (oldVNode) {
-      if (vnode) {
-        patch(vnode, oldVNode, container)
-        container.vnode = vnode
-      } else {
-        container.removeChild(oldVNode.el!)
-        container.vnode = null
-      }
-    } else {
-      mount(vnode, container)
-      container.vnode = vnode
-    }
+    patch(vnode, oldVNode, container)
   }
 }
 

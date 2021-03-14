@@ -10,7 +10,7 @@ const baseHandler: ProxyHandler<any> = {
     if (key === "_raw") return target
     const val = Reflect.get(target, key, receiver)
     track(target, key)
-    return typeof val === "object" ? reactive(val) : val
+    return isObject(val) && !val._isVNode ? reactive(val) : val
   },
   set(target, key, value, receiver) {
     const oldValue = target[key]
