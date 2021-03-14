@@ -261,7 +261,7 @@ export function createRenderer(nodeOps: NodeOps) {
         } else if (flags & VNodeFlags.Element) {
           patchElement(newVNode, oldVNode)
         } else {
-          patchFragment(newVNode, oldVNode)
+          patchFragment(newVNode, oldVNode, container)
         }
       } else {
         replaceVNode(newVNode, oldVNode, container)
@@ -312,8 +312,8 @@ export function createRenderer(nodeOps: NodeOps) {
     }
   }
 
-  function patchFragment(newVNode: VNode, oldVNode: VNode) {
-    patchChildren(newVNode, oldVNode)
+  function patchFragment(newVNode: VNode, oldVNode: VNode, container: Container) {
+    patchChildren(newVNode, oldVNode, container)
   }
 
   function replaceVNode(newVNode: VNode, oldVNode: VNode, container: Container) {
@@ -321,9 +321,15 @@ export function createRenderer(nodeOps: NodeOps) {
     mount(newVNode, container)
   }
 
-  function patchChildren(newVNode: VNode, oldVNode: VNode) {
+  /**if the vnode is fragment, then it's el is the first child, it 
+   * can't unmount correctly, so pass the really container if the
+   * vnode is fragment
+   */
+  function patchChildren(newVNode: VNode, oldVNode: VNode, container?: Container) {
     const { childFlags: newFlag, children: newChildren } = newVNode
-    const { childFlags: oldFlag, children: oldChildren, el } = oldVNode
+    const { childFlags: oldFlag, children: oldChildren } = oldVNode
+
+    const el = container || oldVNode.el
     if (newFlag & ChildrenFlags.NoChildren) {
       if (oldFlag & ChildrenFlags.Single) {
         unmount(oldChildren as VNode, el!)
