@@ -3,5 +3,3 @@ export * from './reactivity'
 export * from './renderer'
 export * from './shared'
 export * from './vdom'
-
-import '../App'
