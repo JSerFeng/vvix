@@ -18,15 +18,12 @@ const tsPlugin = ts({
   extensions
 })
 
-const Global = `;const __DEV__ = true;`
-
 export default {
   input: "./lib/index.ts", 
   output: {
     file: "./build/bundle.js",
     format: "iife",
     name: "vvix",
-    banner: Global
   },
   plugins: [
     resolve(),

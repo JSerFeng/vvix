@@ -17,22 +17,16 @@ const tsPlugin = ts({
   extensions
 })
 
-
-const Global = `;const __DEV__ = false;`
-
-
 export default {
   input: "./lib/index.ts",
   output: [{
     file: "./build/bundle.cjs.js",
     format: "cjs",
     name: "vvix",
-    banner: Global
   }, {
     file: "./build/bundle.esm.js",
     format: "es",
     name: "vvix",
-    banner: Global
   }],
   plugins: [
     resolve(),
@@ -41,6 +35,5 @@ export default {
     babel({
       "exclude": 'node_modules/**', // 只编译我们的源代码
     }),
-    terser()
   ]
 };

@@ -1,1 +1,968 @@
-const e=e=>{console.warn(e)},t=(e,t)=>{console.error(e),console.error(t)},n=(e,t)=>e.flags===t.flags&&e.type===t.type,l=(e,t)=>{if(Object.keys(e).length!==Object.keys(t).length)return!1;for(const n in e)if(!(n in t)||e[n]!==t[n])return!1;return!0},r=e=>{const t=e.length;if(0===t)return[];if(1===t)return[0];const n=new Array(t).fill(1),l=[];let r=-1;for(let l=t-1;l>=0;l--){const o=e[l];for(let i=l+1;i<t;i++){o<e[i]&&(n[l]=Math.max(n[l],1+n[i]),(-1===r||n[r]<n[l])&&(r=l))}}if(-1===r)return[];for(;r<t;){const e=n[r];for(l.push(r++);n[r]!==e-1&&r<t;)r++}return l},o=e=>Array.isArray(e),i=e=>"object"==typeof e&&null!==e,s=e=>null==e,c=e=>null!=e,a=[];let f=null,u=!1;function h(e,t={lazy:!1,active:!0}){const n=d(e,t);return n.lazy||n(),n}function d(e,t){const n=function t(...l){t.active&&!u&&(a.includes(n)||(a.push(t),f=n,e(...l),a.pop(),f=null))};return n.lazy=t.lazy||!1,n.active=t.active||!0,n.raw=e,n.deps=[],n.scheduler=t.scheduler||null,n}const p=(e,t)=>{const n=g.get(e);if(!n)return;const l=n.get(t);l&&l.forEach((e=>{e!==f&&(e.scheduler?e.scheduler(e):e())}))},g=new WeakMap,_=(e,t)=>{if(!f)return;let n=g.get(e);n||g.set(e,n=new Map);let l=n.get(t);l||n.set(t,l=new Set),l.has(f)||(l.add(f),f.deps.push(l))},y=e=>{e.active=!1},m=()=>{u=!0},v=()=>{u=!1},k=new WeakMap,C=new WeakMap,w={get(e,t,n){if("_mark"===t)return!0;if("_raw"===t)return e;const l=Reflect.get(e,t,n);return _(e,t),i(l)&&!l._isVNode?E(l):l},set(e,t,n,l){const r=e[t],o=Reflect.set(e,t,n,l);return n!==r&&p(e,t),o},has(e,t){const n=Reflect.has(e,t);return _(e,t),n},deleteProperty(e,t){const n=Reflect.deleteProperty(e,t);return p(e,t),n}},E=e=>{if("object"!=typeof e)return e;if(e._raw)return e;let t;return(t=k.get(e))||(t=new Proxy(e,w),C.set(t,e)),t},S=e=>C.get(e)||e,F=e=>(e._raw=!0,e),b=e=>e&&!!e._isRef;class x{constructor(e){this._isRef=!0,s(e)?this._value=null:this._value=i(e)?E(e):e}get value(){return _(this,"value"),this._value}set value(e){e!==this._value&&(this._value=e,p(this,"value"))}}function M(e){return s(e)?new x:b(e)?e:new x(e)}var N,A;!function(e){e[e.Element=1]="Element",e[e.FC=2]="FC",e[e.Text=4]="Text",e[e.Fragment=8]="Fragment",e[e.Portal=16]="Portal",e[e.Svg=32]="Svg"}(N||(N={})),function(e){e[e.Multiple=1]="Multiple",e[e.Single=2]="Single",e[e.NoChildren=8]="NoChildren"}(A||(A={}));const T=Symbol("Fragment"),P=Symbol("Portal");class R{constructor(e,t,n,l){this.data={},this._isVNode=!0,this.el=null,this._instance=null,this.type=e,"function"==typeof e?(this.flags=N.FC,this._instance={_props:{children:[],...t},_render:null,_mounted:!1,_vnode:null,_update:null,_onMount:[],_onUnmount:[]}):this.flags="string"==typeof e?"svg"===e?N.Svg:N.Element:e===T?N.Fragment:e===P?N.Portal:N.Text,c(l)?this.key=l:c(t.key)?(this.key=t.key,delete t.key):this.key=null,this.data=t;Array.isArray(n)?(this.children=n.map((e=>i(e)?e:j(null,null,e+""))),this.childFlags=A.Multiple):i(n)?(this.children=n,this.childFlags=A.Single):c(n)?this.flags&N.Text?(this.childFlags=A.NoChildren,this.children=n.toString()):(this.childFlags=A.Single,this.children=j(null,null,n.toString())):(this.childFlags=A.NoChildren,this.children=null)}}function B(e,t){return n=>("function"==typeof e&&(e=D(e,n)),()=>D(P,{children:e},t))}function j(e,t,...n){let l=null;return 0===n.length?l=null:1===n.length?(l=n[0],"object"!=typeof l&&(l+="")):l=n,new R(e,t||{},l)}const D=(e,t,n)=>{let{children:l}=t;if(o(l)){let e=!1,t=[];for(const n of l)if(o(n)){e=!0,t=n;break}if(e){const e={};for(const n of t)if(c(n.key)){if(n.key in e){console.error("[key property] can not be the same \nduplicated key: \n"+n.key);break}e[n.key]=!0}else console.error("child in an array must have a key \n");l=l.flat()}}return new R(e,t,l,n)},z=D,W=[];let L=!1;const U=e=>{W.includes(e)||W.push(e),L||(L=!0,Promise.resolve().then(O))},O=()=>{W.forEach((e=>e())),W.length=0,L=!1},V=/\[A-Z]|^(?:value|checked|selected|muted)$/;let Z=null;const $={getElement:e=>document.querySelector(e),createElement:e=>document.createElement(e),createTextNode:e=>document.createTextNode(e),createComment:e=>document.createComment(e),createSvgElement:e=>document.createElementNS("http://www.w3.org/2000/svg",e),appendChild:(e,t)=>e.appendChild(t),insertBefore:(e,t,n)=>e.insertBefore(t,n),removeChild:(e,t)=>e.removeChild(t),setAttribute(e,t,n){/\[A-Z]|^(?:value|checked|selected|muted)$/.test(t)?e[t]=n:"key"!==t&&"children"!==t&&e.setAttribute(t,n)},setText:(e,t)=>e.textContent=t,patchData(e,t,n,l,r){if(n!==l&&!(r&&r&N.Element&&"children"===t))switch(t){case"style":if(n)for(const t in n)e.style[t]=n[t];if(l)for(const t in l)n&&n[t]===l[t]||(e.style[t]="");break;case"class":e.className=n;break;default:if(t.startsWith("on")){const r=t.split("on")[1].toLowerCase();n&&e.addEventListener(r,n),l&&e.removeEventListener(r,l)}else V.test(t)?e[t]=n:e.setAttribute(t,n)}}};function q(e){function t(n,l,r,o){if(s(n))return;const{flags:i}=n;i&N.FC?function(e,n,l,r){const{type:o}=e;e._instance._update=()=>{if(e._instance._mounted){const t=e._instance._vnode,r=e._instance._render();a(r,t,n,l,t?.el?.nextSibling),e._instance._vnode=r}else{const o=e._instance._vnode=e._instance._render();t(o,n,l,r),e.el=o.el,e._instance._mounted=!0;for(const t of e._instance._onMount)t()}},Z=e._instance,e._instance._render=o(e._instance._props),Z=null,h((()=>{e._instance._update()}),{scheduler:U})}(n,l,r,o):i&(N.Element|N.Svg)?function(n,l,r,o){const{data:i,childFlags:s,children:c,type:a}=n,f=n.el=r?e.createSvgElement(a):e.createElement(a);i.ref&&(i.ref.value=f);for(const t in i)e.patchData(f,t,i[t],null,N.Element);o?e.insertBefore(l,f,o):e.appendChild(l,f);!function(e,n,l,r,o){if(e&A.NoChildren)return;if(e&A.Single)t(n,r,o);else if(e&A.Multiple){const e=l.el;for(const l of n)t(l,e,o)}}(s,c,n,f,r)}(n,l,r,o):i&N.Text?function(t,n,l){const r=e.createTextNode(t.children);t.el=r,l?e.insertBefore(n,r,l):e.appendChild(n,r)}(n,l,o):i&N.Portal?function(n){const l=n.el="string"==typeof n.key?e.getElement(n.key):n.key;t(n.children,l,!1)}(n):function(n,l,r,o){const{children:i}=n;Array.isArray(i)?i.forEach((e=>t(e,l,r,o))):i&&t(i,l,r,o);const s=e.createComment("__FRAGMENT_END__");n.el=s,o?e.insertBefore(l,s,o):e.appendChild(l,s)}(n,l,r,o)}function o(t,n){const{flags:l,children:r,el:s}=t;if(l&N.Element||l&N.Text)e.removeChild(n,t.el);else if(l&N.FC)i(t,n);else if(l&N.Fragment)Array.isArray(r)?r.forEach((e=>o(e,n))):r&&o(r,n),e.removeChild(n,s);else if(l&N.Portal){const e=t.el;o(t.children,e)}}function i(t,n){const{childFlags:l,children:r}=t,o=t.el;if(l&A.Multiple)for(const e of r)e.flags&N.FC&&i(e,o);let s=t._instance._onUnmount;if(s.length)for(const e of s)e();t._instance=null,e.removeChild(n,o)}function a(r,i,s,c,u){if(r&&i)if(n(r,i)){const t=r.flags;t&N.FC?function(e,t){if(e.el=t.el,e._instance=t._instance,function(e,t){const n=e._instance._props,r=t._instance._props;return delete n.children,delete r.children,l(n,r)}(e,t))return;const n=e._instance._props,r=t._instance._props;for(const t in n)n[t]!==r[t]&&(e._instance._props[t]=n[t]);e._instance._update()}(r,i):t&N.Text?function(t,n){const l=t.el=n.el;t.children!==n.children&&e.setText(l,t.children)}(r,i):t&N.Element?function(t,n,l){const r=t.el=n.el;for(const l in t.data)e.patchData(r,l,t.data[l],n.data[l],N.Element);for(const l in n.data)t.data[l]||e.patchData(r,l,null,n.data[l],N.Element);f(t,n,l)}(r,i,c):t&N.Portal?function(e,t){const n=e.el=t.el;a(e.children,t.children,n,!1)}(r,i):function(e,t,n,l){const r=e.el=t.el;f(e,t,l,n,r)}(r,i,s,c)}else!function(e,n,l,r){const i=n.el?.nextSibling;o(n,l),t(e,l,r,i)}(r,i,s,c);else r?t(r,s,c,u):i&&o(i,s)}function f(n,l,i,s,f){const{childFlags:u,children:h}=n,{childFlags:d,children:p}=l,g=s||l.el;if(u&A.NoChildren){if(d&A.Single)o(p,g);else if(d&A.Multiple)for(const e of p)o(e,g)}else if(u&A.Single){if(d&A.NoChildren)t(h,g,i,f);else if(d&A.Single)a(h,p,g,i,f);else if(d&A.Multiple){for(const e of p)o(e,g);t(h,g,i,f)}}else if(u&A.Multiple)if(d&A.NoChildren)for(const e of h)t(e,g,i,f);else if(d&A.Single){o(p,g);for(const e of h)t(e,g,i,f)}else d&A.Multiple&&function(n,l,i,s,f){let u=0,h=n.length-1,d=n[u],p=l.length-1,g=l[u];e:{for(;u<=h&&u<=p&&d.key===g.key;){if(a(d,g,i,s),u++,u>h||u>p)break e;d=n[u],g=l[u]}for(d=n[h],g=l[p];u<=h&&u<=p&&d.key===g.key;){if(a(d,g,i,s),h--,p--,u>h||u>p)break e;d=n[h],g=l[p]}}if(u>h&&u<=p)for(let e=u;e<=p;e++)o(l[e],i);else if(u>p){const e=p+1>=l.length?void 0:l[p+1].el;for(let l=u;l<=h;l++)t(n[l],i,s,e)}else{let _=!1,y=0,m=0;const v=h-u+1,k=new Array(v).fill(-1),C={},w={};for(let e=0;e<v;e++)C[n[u+e].key]=e;for(let e=u;e<=p;e++)if(g=l[e],w[g.key]=!0,m<v){const t=C[g.key];c(t)?(d=n[t+u],a(d,g,i,s),m++,k[t]=e,t<y?_=!0:y=t):o(g,i)}else o(g,i);if(_){const l=r(k);let o=l.length-1;for(let r=h;r>=u;r--){if(d=n[r],-1===k[r]){t(d,i,s,r+1<n.length?n[r+1].el:void 0)}if(r===l[o])o--;else{const t=r+1<n.length?n[r+1].el:void 0;e.insertBefore(i,d.el,t)}}}else for(let e=h;e>=u;e--)if(d=n[e],!w[d.key]){t(d,i,s,(e+1>=n.length?void 0:n[e+1].el)||f)}}}(h,p,g,i,f)}return function(e,t){const n=!!(e.flags&N.Svg);a(e,t.vnode,t,n)}}const G=()=>!!Z||(_warn("hook must be called inside a function component"),!1),H=e=>{G()&&Z._onMount.push(e)},I=e=>{G()&&Z._onUnmount.push(e)},J=e=>{G()&&Z._props.ref&&(Z._props.ref.value=e)},K=(e,t)=>{t||(t=$);const n=q(t);return{mount(l){l?"string"!=typeof l||(l=t.getElement(l))?n(e,l):console.warn("无效的id或者class"):console.warn("请指定一个挂在节点的id或者class或者dom节点")}}};export{A as ChildrenFlags,T as Fragment,P as Portal,x as Ref,R as VNode,N as VNodeFlags,Z as _currentMountingFC,t as _err,e as _warn,f as activeEffect,$ as baseNodeOps,G as checkHookAvailable,K as createApp,d as createEffect,B as createPortal,q as createRenderer,h as effect,a as effectStack,J as expose,j as h,o as isArray,c as isDef,i as isObject,b as isRef,n as isSameVNode,s as isUndef,D as jsx,z as jsxs,r as lis,F as markRaw,H as onMounted,I as onUnmounted,m as pauseTracking,E as reactive,M as ref,v as resetTracking,l as shallowEqual,y as stop,S as toRaw,_ as track,p as trigger};
+const _warn$1 = (msg) => {
+    console.warn(msg);
+};
+const _err = (msg, err) => {
+    console.error(msg);
+    console.error(err);
+};
+const isSameVNode = (v1, v2) => v1.flags === v2.flags && v1.type === v2.type;
+const shallowEqual = (propsA, propsB) => {
+    if (Object.keys(propsA).length !== Object.keys(propsB).length)
+        return false;
+    for (const key in propsA) {
+        if (!(key in propsB) || propsA[key] !== propsB[key]) {
+            return false;
+        }
+    }
+    return true;
+};
+const lis = (arr) => {
+    const len = arr.length;
+    if (len === 0)
+        return [];
+    if (len === 1)
+        return [0];
+    const res = new Array(len).fill(1);
+    const ret = [];
+    let idx = -1;
+    for (let i = len - 1; i >= 0; i--) {
+        const value1 = arr[i];
+        for (let j = i + 1; j < len; j++) {
+            const value2 = arr[j];
+            if (value1 < value2) {
+                res[i] = Math.max(res[i], 1 + res[j]);
+                if (idx === -1 || res[idx] < res[i]) {
+                    idx = i;
+                }
+            }
+        }
+    }
+    if (idx === -1)
+        return [];
+    while (idx < len) {
+        const currValue = res[idx];
+        ret.push(idx++);
+        while (res[idx] !== currValue - 1 && idx < len) {
+            idx++;
+        }
+    }
+    return ret;
+};
+const isArray = (value) => {
+    return Array.isArray(value);
+};
+const isObject = (value) => {
+    return typeof value === "object" && value !== null;
+};
+const isUndef = (value) => {
+    return value === undefined || value === null;
+};
+const isDef = (value) => {
+    return value !== undefined && value !== null;
+};
+
+const effectStack = [];
+let activeEffect = null;
+let pause = false;
+function effect(fn, option = {
+    lazy: false,
+    active: true
+}) {
+    const _effect = createEffect(fn, option);
+    if (!_effect.lazy) {
+        _effect();
+    }
+    return _effect;
+}
+function createEffect(fn, option) {
+    const effect = function reactiveEffect(...args) {
+        if (reactiveEffect.active && !pause) {
+            if (!effectStack.includes(effect)) {
+                effectStack.push(reactiveEffect);
+                activeEffect = effect;
+                fn(...args);
+                effectStack.pop();
+                activeEffect = null;
+            }
+        }
+    };
+    effect.lazy = option.lazy || false;
+    effect.active = option.active || true;
+    effect.raw = fn;
+    effect.deps = [];
+    effect.scheduler = (option.scheduler || null);
+    return effect;
+}
+const trigger = (target, key) => {
+    const depsMap = targetMap.get(target);
+    if (!depsMap)
+        return;
+    const deps = depsMap.get(key);
+    if (!deps)
+        return;
+    deps.forEach(effect => {
+        if (effect !== activeEffect) {
+            if (effect.scheduler) {
+                effect.scheduler(effect);
+            }
+            else {
+                effect();
+            }
+        }
+    });
+};
+const targetMap = new WeakMap();
+const track = (target, key) => {
+    if (!activeEffect)
+        return;
+    let depsMap = targetMap.get(target);
+    if (!depsMap) {
+        targetMap.set(target, depsMap = new Map());
+    }
+    let deps = depsMap.get(key);
+    if (!deps) {
+        depsMap.set(key, deps = new Set());
+    }
+    if (!deps.has(activeEffect)) {
+        deps.add(activeEffect);
+        activeEffect.deps.push(deps);
+    }
+};
+const stop = (effect) => {
+    effect.active = false;
+};
+const pauseTracking = () => {
+    pause = true;
+};
+const resetTracking = () => {
+    pause = false;
+};
+
+const raw2proxy = new WeakMap();
+const proxy2raw = new WeakMap();
+const baseHandler = {
+    get(target, key, receiver) {
+        if (key === "_mark")
+            return true;
+        if (key === "_raw")
+            return target;
+        const val = Reflect.get(target, key, receiver);
+        track(target, key);
+        return isObject(val) && !val._isVNode ? reactive(val) : val;
+    },
+    set(target, key, value, receiver) {
+        const oldValue = target[key];
+        const result = Reflect.set(target, key, value, receiver);
+        if (value !== oldValue) {
+            trigger(target, key);
+        }
+        return result;
+    },
+    has(target, key) {
+        const result = Reflect.has(target, key);
+        track(target, key);
+        return result;
+    },
+    deleteProperty(target, key) {
+        const result = Reflect.deleteProperty(target, key);
+        trigger(target, key);
+        return result;
+    }
+};
+const reactive = (target) => {
+    if (typeof target !== "object")
+        return target;
+    if (target._raw)
+        return target;
+    let observed;
+    if (observed = raw2proxy.get(target)) {
+        return observed;
+    }
+    observed = new Proxy(target, baseHandler);
+    proxy2raw.set(observed, target);
+    return observed;
+};
+const toRaw = (target) => {
+    return proxy2raw.get(target) || target;
+};
+const markRaw = (target) => {
+    target._raw = true;
+    return target;
+};
+const isRef = (ref) => {
+    return ref && !!ref._isRef;
+};
+class Ref {
+    constructor(value) {
+        this._isRef = true;
+        if (isUndef(value)) {
+            this._value = null;
+        }
+        else {
+            this._value = isObject(value) ? reactive(value) : value;
+        }
+    }
+    get value() {
+        track(this, "value");
+        return this._value;
+    }
+    set value(value) {
+        if (value !== this._value) {
+            this._value = value;
+            trigger(this, "value");
+        }
+    }
+}
+function ref(value) {
+    if (isUndef(value)) {
+        return new Ref();
+    }
+    if (isRef(value)) {
+        return value;
+    }
+    return new Ref(value);
+}
+
+var VNodeFlags;
+(function (VNodeFlags) {
+    VNodeFlags[VNodeFlags["Element"] = 1] = "Element";
+    VNodeFlags[VNodeFlags["FC"] = 2] = "FC";
+    VNodeFlags[VNodeFlags["Text"] = 4] = "Text";
+    VNodeFlags[VNodeFlags["Fragment"] = 8] = "Fragment";
+    VNodeFlags[VNodeFlags["Portal"] = 16] = "Portal";
+    VNodeFlags[VNodeFlags["Svg"] = 32] = "Svg";
+})(VNodeFlags || (VNodeFlags = {}));
+var ChildrenFlags;
+(function (ChildrenFlags) {
+    ChildrenFlags[ChildrenFlags["Multiple"] = 1] = "Multiple";
+    ChildrenFlags[ChildrenFlags["Single"] = 2] = "Single";
+    ChildrenFlags[ChildrenFlags["NoChildren"] = 8] = "NoChildren";
+})(ChildrenFlags || (ChildrenFlags = {}));
+const Fragment = Symbol("Fragment");
+const Portal = Symbol("Portal");
+class VNode {
+    constructor(type, data, children, key) {
+        this.data = {};
+        this._isVNode = true;
+        this.el = null;
+        this._instance = null;
+        this.type = type;
+        if (typeof type === "function") {
+            this.flags = VNodeFlags.FC;
+            this._instance = {
+                _props: {
+                    children: [],
+                    ...data
+                },
+                _render: null,
+                _mounted: false,
+                _vnode: null,
+                _update: null,
+                _onMount: [],
+                _onUnmount: []
+            };
+        }
+        else if (typeof type === "string") {
+            if (type === "svg") {
+                this.flags = VNodeFlags.Svg;
+            }
+            else {
+                this.flags = VNodeFlags.Element;
+            }
+        }
+        else if (type === Fragment) {
+            this.flags = VNodeFlags.Fragment;
+        }
+        else if (type === Portal) {
+            this.flags = VNodeFlags.Portal;
+        }
+        else {
+            this.flags = VNodeFlags.Text;
+        }
+        if (isDef(key)) {
+            this.key = key;
+        }
+        else if (isDef(data.key)) {
+            this.key = data.key;
+            delete data.key;
+        }
+        else {
+            this.key = null;
+        }
+        this.data = data;
+        const isChildrenArray = Array.isArray(children);
+        /**确定children类型 */
+        if (isChildrenArray) {
+            /**是数组 */
+            this.children = children.map(c => {
+                if (!isObject(c)) {
+                    /**@ts-ignore */
+                    return h(null, null, c + "");
+                }
+                return c;
+            });
+            this.childFlags = ChildrenFlags.Multiple;
+        }
+        else if (isObject(children)) {
+            this.children = children;
+            this.childFlags = ChildrenFlags.Single;
+        }
+        else if (isDef(children)) {
+            if (this.flags & VNodeFlags.Text) {
+                this.childFlags = ChildrenFlags.NoChildren;
+                /**@ts-ignore */
+                this.children = children.toString();
+            }
+            else {
+                this.childFlags = ChildrenFlags.Single;
+                /**@ts-ignore */
+                this.children = h(null, null, children.toString());
+            }
+        }
+        else {
+            this.childFlags = ChildrenFlags.NoChildren;
+            this.children = null;
+        }
+    }
+}
+function createPortal(component, container) {
+    const Fc = (props) => {
+        if (typeof component === "function") {
+            component = jsx(component, props);
+        }
+        return () => jsx(Portal, {
+            children: component
+        }, container);
+    };
+    return Fc;
+}
+function h(type, data, ...children) {
+    let _children = null;
+    if (children.length === 0) {
+        _children = null;
+    }
+    else if (children.length === 1) {
+        /**@ts-ignore */
+        _children = children[0];
+        if (typeof _children !== "object") {
+            _children = _children + "";
+        }
+    }
+    else {
+        _children = children;
+    }
+    return new VNode(type, data || {}, _children);
+}
+const jsx = (type, data, key) => {
+    let { children } = data;
+    if (isArray(children)) {
+        let needFlat = false;
+        let arrToBeFlat = [];
+        for (const c of children) {
+            if (isArray(c)) {
+                needFlat = true;
+                arrToBeFlat = c;
+                break;
+            }
+        }
+        if (needFlat) {
+            /**@ts-ignore check if key property exist*/
+            const keyMap = {};
+            for (const c of arrToBeFlat) {
+                if (!isDef(c.key)) {
+                    console.error("child in an array must have a key \n");
+                }
+                else if (c.key in keyMap) {
+                    console.error("[key property] can not be the same \n" +
+                        "duplicated key: \n" + c.key);
+                    break;
+                }
+                else {
+                    keyMap[c.key] = true;
+                }
+            }
+            children = children.flat();
+        }
+    }
+    return new VNode(type, data, children, key);
+};
+const jsxs = jsx;
+
+const updateQueue = [];
+let flushing = false;
+const queueJob = (fn) => {
+    if (!updateQueue.includes(fn)) {
+        updateQueue.push(fn);
+    }
+    if (!flushing) {
+        flushing = true;
+        Promise.resolve().then(flushWork);
+    }
+};
+const flushWork = () => {
+    updateQueue.forEach(cb => cb());
+    updateQueue.length = 0;
+    flushing = false;
+};
+
+const DomSpecialKeys = /\[A-Z]|^(?:value|checked|selected|muted)$/;
+let _currentMountingFC = null;
+const baseNodeOps = {
+    getElement(name) {
+        return document.querySelector(name);
+    },
+    createElement(type) {
+        return document.createElement(type);
+    },
+    createTextNode(text) {
+        return document.createTextNode(text);
+    },
+    createComment(text) {
+        return document.createComment(text);
+    },
+    createSvgElement(tag) {
+        return document.createElementNS('http://www.w3.org/2000/svg', tag);
+    },
+    appendChild(parent, el) {
+        return parent.appendChild(el);
+    },
+    insertBefore(parent, node, refNode) {
+        return parent.insertBefore(node, refNode);
+    },
+    removeChild(parent, el) {
+        return parent.removeChild(el);
+    },
+    setAttribute(el, key, value) {
+        const DomSpecialKeys = /\[A-Z]|^(?:value|checked|selected|muted)$/;
+        if (DomSpecialKeys.test(key)) {
+            /**@ts-ignore */
+            el[key] = value;
+        }
+        else if (key !== "key" && key !== "children") {
+            el.setAttribute(key, value);
+        }
+    },
+    setText(el, text) {
+        return el.textContent = text;
+    },
+    patchData(el, key, newVal, oldVal, vnodeFlags) {
+        if (newVal === oldVal)
+            return;
+        if (vnodeFlags && (vnodeFlags & VNodeFlags.Element) && (key === "children")) {
+            return;
+        }
+        switch (key) {
+            case "style":
+                if (newVal) {
+                    for (const property in newVal) {
+                        /**@ts-ignore */
+                        el.style[property] = newVal[property];
+                    }
+                }
+                if (oldVal) {
+                    for (const property in oldVal) {
+                        if (!newVal || newVal[property] !== oldVal[property]) {
+                            /**@ts-ignore */
+                            el.style[property] = "";
+                        }
+                    }
+                }
+                break;
+            case "class":
+                el.className = newVal;
+                break;
+            default:
+                if (key.startsWith("on")) {
+                    const eventName = key.split("on")[1].toLowerCase();
+                    if (newVal) {
+                        el.addEventListener(eventName, newVal);
+                    }
+                    if (oldVal) {
+                        el.removeEventListener(eventName, oldVal);
+                    }
+                }
+                else if (DomSpecialKeys.test(key)) {
+                    /**@ts-ignore */
+                    el[key] = newVal;
+                }
+                else {
+                    el.setAttribute(key, newVal);
+                }
+        }
+    }
+};
+function createRenderer(nodeOps) {
+    /**----------- Mount ------------- */
+    function mount(vnode, container, isSVG, refNode) {
+        if (isUndef(vnode))
+            return;
+        const { flags } = vnode;
+        if (flags & VNodeFlags.FC) {
+            mountFC(vnode, container, isSVG, refNode);
+        }
+        else if (flags & (VNodeFlags.Element | VNodeFlags.Svg)) {
+            mountElement(vnode, container, isSVG, refNode);
+        }
+        else if (flags & VNodeFlags.Text) {
+            mountTextChild(vnode, container, refNode);
+        }
+        else if (flags & VNodeFlags.Portal) {
+            mountPortal(vnode);
+        }
+        else {
+            mountFragment(vnode, container, isSVG, refNode);
+        }
+    }
+    function mountChildren(childFlags, children, vnode, container, isSVG) {
+        if (childFlags & ChildrenFlags.NoChildren) {
+            return;
+        }
+        if (childFlags & ChildrenFlags.Single) {
+            mount(children, container, isSVG);
+        }
+        else if (childFlags & ChildrenFlags.Multiple) {
+            const el = vnode.el;
+            for (const child of children) {
+                mount(child, el, isSVG);
+            }
+        }
+    }
+    function mountPortal(vnode) {
+        const el = vnode.el = typeof vnode.key === "string"
+            ? nodeOps.getElement(vnode.key)
+            : vnode.key;
+        const childVnode = vnode.children;
+        mount(childVnode, el, false);
+    }
+    function mountFC(vnode, container, isSVG, refNode) {
+        const { type } = vnode;
+        vnode._instance._update = () => {
+            if (vnode._instance._mounted) {
+                /**patch */
+                const oldVNode = vnode._instance._vnode;
+                const newVNode = vnode._instance._render();
+                const refNode = oldVNode?.el?.nextSibling;
+                patch(newVNode, oldVNode, container, isSVG, refNode);
+                vnode._instance._vnode = newVNode;
+            }
+            else {
+                /**mount */
+                const newVNode = vnode._instance._vnode = vnode._instance._render();
+                mount(newVNode, container, isSVG, refNode);
+                vnode.el = newVNode.el;
+                vnode._instance._mounted = true;
+                for (const cb of vnode._instance._onMount) {
+                    cb();
+                }
+            }
+        };
+        _currentMountingFC = vnode._instance;
+        vnode._instance._render = type(vnode._instance._props);
+        _currentMountingFC = null;
+        effect(() => {
+            vnode._instance._update();
+        }, {
+            scheduler: queueJob
+        });
+    }
+    function mountElement(vnode, container, isSVG, refNode) {
+        const { data, childFlags, children, type } = vnode;
+        const el = (vnode.el = isSVG
+            ? nodeOps.createSvgElement(type)
+            : nodeOps.createElement(type));
+        if (data.ref) {
+            /**@ts-ignore */
+            data.ref.value = el;
+        }
+        for (const key in data) {
+            nodeOps.patchData(el, key, data[key], null, VNodeFlags.Element);
+        }
+        if (refNode) {
+            nodeOps.insertBefore(container, el, refNode);
+        }
+        else {
+            nodeOps.appendChild(container, el);
+        }
+        /**mount children */
+        mountChildren(childFlags, children, vnode, el, isSVG);
+    }
+    function mountTextChild(vnode, container, refNode) {
+        const textNode = nodeOps.createTextNode(vnode.children);
+        vnode.el = textNode;
+        if (refNode) {
+            nodeOps.insertBefore(container, textNode, refNode);
+        }
+        else {
+            nodeOps.appendChild(container, textNode);
+        }
+    }
+    function mountFragment(vnode, container, isSVG, refNode) {
+        const { children } = vnode;
+        if (Array.isArray(children)) {
+            children.forEach(c => mount(c, container, isSVG, refNode));
+        }
+        else if (children) {
+            mount(children, container, isSVG, refNode);
+        }
+        const anchor = nodeOps.createComment("__FRAGMENT_END__");
+        vnode.el = anchor;
+        if (refNode) {
+            nodeOps.insertBefore(container, anchor, refNode);
+        }
+        else {
+            nodeOps.appendChild(container, anchor);
+        }
+    }
+    function unmount(vnode, container) {
+        const { flags, children, el } = vnode;
+        if (flags & VNodeFlags.Element || flags & VNodeFlags.Text) {
+            nodeOps.removeChild(container, vnode.el);
+        }
+        else if (flags & VNodeFlags.FC) {
+            unmountFC(vnode, container);
+        }
+        else if (flags & VNodeFlags.Fragment) {
+            if (Array.isArray(children)) {
+                children.forEach(c => unmount(c, container));
+            }
+            else if (children) {
+                unmount(children, container);
+            }
+            nodeOps.removeChild(container, el);
+        }
+        else if (flags & VNodeFlags.Portal) {
+            const el = vnode.el;
+            unmount(vnode.children, el);
+        }
+    }
+    function unmountFC(vnode, container) {
+        const { childFlags, children } = vnode;
+        const el = vnode.el;
+        if (childFlags & ChildrenFlags.Multiple) {
+            for (const child of children) {
+                if (child.flags & VNodeFlags.FC) {
+                    unmountFC(child, el);
+                }
+            }
+        }
+        let onUnmounted = vnode._instance._onUnmount;
+        if (onUnmounted.length) {
+            for (const cb of onUnmounted) {
+                cb();
+            }
+        }
+        vnode._instance = null;
+        nodeOps.removeChild(container, el);
+    }
+    /**----------- Update ------------- */
+    function patch(newVNode, oldVNode, container, isSVG, refNode) {
+        if (newVNode && oldVNode) {
+            if (isSameVNode(newVNode, oldVNode)) {
+                const flags = newVNode.flags;
+                if (flags & VNodeFlags.FC) {
+                    patchFC(newVNode, oldVNode);
+                }
+                else if (flags & VNodeFlags.Text) {
+                    patchTextVNode(newVNode, oldVNode);
+                }
+                else if (flags & VNodeFlags.Element) {
+                    patchElement(newVNode, oldVNode, isSVG);
+                }
+                else if (flags & VNodeFlags.Portal) {
+                    patchPortal(newVNode, oldVNode);
+                }
+                else {
+                    patchFragment(newVNode, oldVNode, container, isSVG);
+                }
+            }
+            else {
+                replaceVNode(newVNode, oldVNode, container, isSVG);
+            }
+        }
+        else if (newVNode) {
+            mount(newVNode, container, isSVG, refNode);
+        }
+        else if (oldVNode) {
+            unmount(oldVNode, container);
+        }
+    }
+    function patchFC(newVNode, oldVNode) {
+        newVNode.el = oldVNode.el;
+        newVNode._instance = oldVNode._instance;
+        if (bailout(newVNode, oldVNode)) {
+            return;
+        }
+        const newData = newVNode._instance._props;
+        const oldData = oldVNode._instance._props;
+        for (const key in newData) {
+            if (newData[key] !== oldData[key]) {
+                /**@ts-ignore */
+                newVNode._instance._props[key] = newData[key];
+            }
+        }
+        newVNode._instance._update();
+    }
+    function patchElement(newVNode, oldVNode, isSVG) {
+        const el = (newVNode.el = oldVNode.el);
+        for (const key in newVNode.data) {
+            nodeOps.patchData(el, key, newVNode.data[key], oldVNode.data[key], VNodeFlags.Element);
+        }
+        for (const key in oldVNode.data) {
+            if (!newVNode.data[key]) {
+                nodeOps.patchData(el, key, null, oldVNode.data[key], VNodeFlags.Element);
+            }
+        }
+        patchChildren(newVNode, oldVNode, isSVG);
+    }
+    function patchTextVNode(newVNode, oldVNode) {
+        const el = (newVNode.el = oldVNode.el);
+        if (newVNode.children !== oldVNode.children) {
+            nodeOps.setText(el, newVNode.children);
+        }
+    }
+    function patchFragment(newVNode, oldVNode, container, isSVG) {
+        const refNode = newVNode.el = oldVNode.el;
+        patchChildren(newVNode, oldVNode, isSVG, container, refNode);
+    }
+    function patchPortal(newVNode, oldVNode) {
+        const el = newVNode.el = oldVNode.el;
+        patch(newVNode.children, oldVNode.children, el, false);
+    }
+    function replaceVNode(newVNode, oldVNode, container, isSVG) {
+        const refNode = oldVNode.el?.nextSibling;
+        unmount(oldVNode, container);
+        mount(newVNode, container, isSVG, refNode);
+    }
+    /**if the vnode is fragment, then it's el is the first child, it
+     * can't unmount correctly, so pass the really container if the
+     * vnode is fragment
+     */
+    function patchChildren(newVNode, oldVNode, isSVG, container, refNode) {
+        const { childFlags: newFlag, children: newChildren } = newVNode;
+        const { childFlags: oldFlag, children: oldChildren } = oldVNode;
+        /**el is string only when vnode is a portal */
+        const el = container || oldVNode.el;
+        if (newFlag & ChildrenFlags.NoChildren) {
+            if (oldFlag & ChildrenFlags.Single) {
+                unmount(oldChildren, el);
+            }
+            else if (oldFlag & ChildrenFlags.Multiple) {
+                for (const child of oldChildren) {
+                    unmount(child, el);
+                }
+            }
+        }
+        else if (newFlag & ChildrenFlags.Single) {
+            if (oldFlag & ChildrenFlags.NoChildren) {
+                mount(newChildren, el, isSVG, refNode);
+            }
+            else if (oldFlag & ChildrenFlags.Single) {
+                patch(newChildren, oldChildren, el, isSVG, refNode);
+            }
+            else if (oldFlag & ChildrenFlags.Multiple) {
+                for (const child of oldChildren) {
+                    unmount(child, el);
+                }
+                mount(newChildren, el, isSVG, refNode);
+            }
+        }
+        else if (newFlag & ChildrenFlags.Multiple) {
+            if (oldFlag & ChildrenFlags.NoChildren) {
+                for (const child of newChildren) {
+                    mount(child, el, isSVG, refNode);
+                }
+            }
+            else if (oldFlag & ChildrenFlags.Single) {
+                unmount(oldChildren, el);
+                for (const child of newChildren) {
+                    mount(child, el, isSVG, refNode);
+                }
+            }
+            else if (oldFlag & ChildrenFlags.Multiple) {
+                patchMultipleChildren(newChildren, oldChildren, el, isSVG, refNode);
+            }
+        }
+    }
+    function patchMultipleChildren(nextChildren, prevChildren, container, isSVG, refNode) {
+        let i = 0;
+        let nextEnd = nextChildren.length - 1;
+        let nextVNode = nextChildren[i];
+        let prevEnd = prevChildren.length - 1;
+        let prevVNode = prevChildren[i];
+        outer: {
+            while (i <= nextEnd && i <= prevEnd) {
+                if (nextVNode.key !== prevVNode.key) {
+                    break;
+                }
+                patch(nextVNode, prevVNode, container, isSVG);
+                i++;
+                if (i > nextEnd || i > prevEnd) {
+                    break outer;
+                }
+                nextVNode = nextChildren[i];
+                prevVNode = prevChildren[i];
+            }
+            nextVNode = nextChildren[nextEnd];
+            prevVNode = prevChildren[prevEnd];
+            while (i <= nextEnd && i <= prevEnd) {
+                if (nextVNode.key !== prevVNode.key) {
+                    break;
+                }
+                patch(nextVNode, prevVNode, container, isSVG);
+                nextEnd--;
+                prevEnd--;
+                if (i > nextEnd || i > prevEnd) {
+                    break outer;
+                }
+                nextVNode = nextChildren[nextEnd];
+                prevVNode = prevChildren[prevEnd];
+            }
+        }
+        if (i > nextEnd && i <= prevEnd) {
+            for (let j = i; j <= prevEnd; j++) {
+                unmount(prevChildren[j], container);
+            }
+        }
+        else if (i > prevEnd) {
+            const refNode = prevEnd + 1 >= prevChildren.length ? undefined : prevChildren[prevEnd + 1].el;
+            for (let j = i; j <= nextEnd; j++) {
+                mount(nextChildren[j], container, isSVG, refNode);
+            }
+        }
+        else {
+            let needMove = false;
+            let pos = 0;
+            let patchedNum = 0;
+            const nextLeftNum = nextEnd - i + 1;
+            const source = new Array(nextLeftNum).fill(-1);
+            const indexMap = {};
+            const prevKeyMap = {};
+            for (let j = 0; j < nextLeftNum; j++) {
+                indexMap[nextChildren[i + j].key] = j;
+            }
+            for (let j = i; j <= prevEnd; j++) {
+                prevVNode = prevChildren[j];
+                prevKeyMap[prevVNode.key] = true;
+                if (patchedNum < nextLeftNum) {
+                    const idx = indexMap[prevVNode.key];
+                    if (isDef(idx)) {
+                        nextVNode = nextChildren[idx + i];
+                        patch(nextVNode, prevVNode, container, isSVG);
+                        patchedNum++;
+                        source[idx] = j;
+                        if (idx < pos) {
+                            needMove = true;
+                        }
+                        else {
+                            pos = idx;
+                        }
+                    }
+                    else { /**移除 */
+                        unmount(prevVNode, container);
+                    }
+                }
+                else {
+                    unmount(prevVNode, container);
+                }
+            }
+            /**
+             *        [ 0  1  2  3  4 ]
+             * old      A  B  C  D  E
+             *
+             *             i        j
+             * new      A  C  B  F  D
+             * source [ 0  2  1 -1  3 ]
+             * seq          [ 2     4 ]
+             *                      s
+             */
+            if (needMove) {
+                const seq = lis(source);
+                let s = seq.length - 1;
+                for (let j = nextEnd; j >= i; j--) {
+                    nextVNode = nextChildren[j];
+                    if (source[j] === -1) {
+                        const refNode = j + 1 < nextChildren.length ? nextChildren[j + 1].el : undefined;
+                        mount(nextVNode, container, isSVG, refNode);
+                    }
+                    if (j === seq[s]) { /** no need for moving */
+                        s--;
+                    }
+                    else {
+                        const refNode = j + 1 < nextChildren.length ? nextChildren[j + 1].el : undefined;
+                        nodeOps.insertBefore(container, nextVNode.el, refNode);
+                    }
+                }
+            }
+            else {
+                for (let j = nextEnd; j >= i; j--) {
+                    nextVNode = nextChildren[j];
+                    if (!prevKeyMap[nextVNode.key]) {
+                        const _refNode = j + 1 >= nextChildren.length ? undefined : nextChildren[j + 1].el;
+                        mount(nextVNode, container, isSVG, _refNode || refNode);
+                    }
+                }
+            }
+        }
+    }
+    function bailout(v1, v2) {
+        const propsA = v1._instance._props;
+        const propsB = v2._instance._props;
+        delete propsA.children;
+        delete propsB.children;
+        return shallowEqual(propsA, propsB);
+    }
+    return function renderer(vnode, container) {
+        const isSVG = !!(vnode.flags & VNodeFlags.Svg);
+        const oldVNode = container.vnode;
+        patch(vnode, oldVNode, container, isSVG);
+    };
+}
+
+const checkHookAvailable = () => {
+    if (!_currentMountingFC) {
+        /**@ts-ignore */
+        _warn("hook must be called inside a function component");
+        return false;
+    }
+    return true;
+};
+const onMounted = (fn) => {
+    if (checkHookAvailable()) {
+        _currentMountingFC._onMount.push(fn);
+    }
+};
+const onUnmounted = (fn) => {
+    if (checkHookAvailable()) {
+        _currentMountingFC._onUnmount.push(fn);
+    }
+};
+const expose = (value) => {
+    if (checkHookAvailable()) {
+        _currentMountingFC._props.ref && (_currentMountingFC._props.ref.value = value);
+    }
+};
+
+const createApp = (app, nodeOps) => {
+    if (!nodeOps) {
+        nodeOps = baseNodeOps;
+    }
+    const render = createRenderer(nodeOps);
+    return {
+        mount(container) {
+            if (!container) {
+                console.warn("请指定一个挂在节点的id或者class或者dom节点");
+                return;
+            }
+            if (typeof container === "string") {
+                container = nodeOps.getElement(container);
+                if (!container) {
+                    console.warn("无效的id或者class");
+                    return;
+                }
+            }
+            render(app, container);
+        }
+    };
+};
+
+export { ChildrenFlags, Fragment, Portal, Ref, VNode, VNodeFlags, _currentMountingFC, _err, _warn$1 as _warn, activeEffect, baseNodeOps, checkHookAvailable, createApp, createEffect, createPortal, createRenderer, effect, effectStack, expose, h, isArray, isDef, isObject, isRef, isSameVNode, isUndef, jsx, jsxs, lis, markRaw, onMounted, onUnmounted, pauseTracking, reactive, ref, resetTracking, shallowEqual, stop, toRaw, track, trigger };
