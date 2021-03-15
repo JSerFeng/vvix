@@ -35,6 +35,6 @@ export default {
     babel({
       "exclude": 'node_modules/**', // 只编译我们的源代码
     }),
-    terser
+    terser()
   ]
 };
