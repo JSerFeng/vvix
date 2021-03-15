@@ -1,12 +1,14 @@
 import { effect } from "../reactivity";
 import { isDef, isSameVNode, isUndef, lis, shallowEqual, _warn } from "../shared";
-import { ChildrenFlags, FC, Portal, VNode, VNodeChildren, VNodeFlags, VNodeInstance } from "../vdom";
+import { ChildrenFlags, FC, VNode, VNodeChildren, VNodeFlags, VNodeInstance } from "../vdom";
 import { queueJob } from "../scheduler";
 
-export type NodeOps<Node = any, TextNode = any> = {
+export type NodeOps<Node = any, TextNode = any, CommentNode = any, SvgEle = any> = {
   getElement(...args: any[]): Node | undefined
   createElement(type: string): Node,
   createTextNode(text: string): TextNode,
+  createSvgElement(tag: string): SvgEle,
+  createComment(text: string): CommentNode,
   appendChild(parent: Node, el: Node): void,
   insertBefore(parent: Node, node: Node, refNode: Node): void,
   removeChild(parent: Node, el: Node): void,
@@ -20,7 +22,7 @@ export interface Container extends HTMLElement {
 }
 
 const DomSpecialKeys = /\[A-Z]|^(?:value|checked|selected|muted)$/
-let _currentMountingFC: VNodeInstance | null = null
+export let _currentMountingFC: VNodeInstance | null = null
 
 export const baseNodeOps: NodeOps = {
   getElement(name) {
@@ -31,6 +33,12 @@ export const baseNodeOps: NodeOps = {
   },
   createTextNode(text: string) {
     return document.createTextNode(text)
+  },
+  createComment(text: string) {
+    return document.createComment(text)
+  },
+  createSvgElement(tag: string) {
+    return document.createElementNS('http://www.w3.org/2000/svg', tag)
   },
   appendChild(parent: Container, el: Container) {
     return parent.appendChild(el)
@@ -101,30 +109,39 @@ export const baseNodeOps: NodeOps = {
 
 export function createRenderer(nodeOps: NodeOps) {
   /**----------- Mount ------------- */
-  function mount(vnode: VNode, container: Container, refNode?: Container) {
+  function mount(vnode: VNode, container: Container, isSVG: boolean, refNode?: Container) {
     if (isUndef(vnode)) return
     const { flags } = vnode
     if (flags & VNodeFlags.FC) {
-      mountFC(vnode, container, refNode)
-    } else if (flags & VNodeFlags.Element) {
-      mountElement(vnode, container, refNode)
+      mountFC(vnode, container, isSVG, refNode)
+    } else if (flags & (VNodeFlags.Element | VNodeFlags.Svg)) {
+      mountElement(vnode, container, isSVG, refNode)
     } else if (flags & VNodeFlags.Text) {
       mountTextChild(vnode, container, refNode)
     } else if (flags & VNodeFlags.Portal) {
       mountPortal(vnode)
     } else {
-      mountFragment(vnode, container, refNode)
+      mountFragment(vnode, container, isSVG, refNode)
     }
   }
 
-  function mountChildren(childFlags: ChildrenFlags, children: VNodeChildren, vnode: VNode, container: Container) {
+  function mountChildren(
+    childFlags: ChildrenFlags,
+    children: VNodeChildren,
+    vnode: VNode,
+    container: Container,
+    isSVG: boolean
+  ) {
     if (childFlags & ChildrenFlags.NoChildren) {
       return
     }
     if (childFlags & ChildrenFlags.Single) {
-      mount(children as VNode, container)
+      mount(children as VNode, container, isSVG)
     } else if (childFlags & ChildrenFlags.Multiple) {
-      mountMultipleChildren(vnode, children as VNode[])
+      const el = vnode.el!
+      for (const child of children as VNode[]) {
+        mount(child, el, isSVG)
+      }
     }
   }
 
@@ -133,10 +150,10 @@ export function createRenderer(nodeOps: NodeOps) {
       ? nodeOps.getElement(vnode.key)
       : vnode.key
     const childVnode = vnode.children as VNode
-    mount(childVnode, el)
+    mount(childVnode, el, false)
   }
 
-  function mountFC(vnode: VNode, container: Container, refNode?: Container) {
+  function mountFC(vnode: VNode, container: Container, isSVG: boolean, refNode?: Container) {
     const { type } = vnode
     vnode._instance!._update = () => {
       if (vnode._instance!._mounted) {
@@ -144,13 +161,13 @@ export function createRenderer(nodeOps: NodeOps) {
         const oldVNode = vnode._instance!._vnode
 
         const newVNode = vnode._instance!._render!()
-
-        patch(newVNode, oldVNode, container)
+        const refNode = oldVNode?.el?.nextSibling as Container
+        patch(newVNode, oldVNode, container, isSVG, refNode)
         vnode._instance!._vnode = newVNode
       } else {
         /**mount */
         const newVNode = vnode._instance!._vnode = vnode._instance!._render!()
-        mount(newVNode, container, refNode)
+        mount(newVNode, container, isSVG, refNode)
         vnode.el = newVNode.el
         vnode._instance!._mounted = true
         for (const cb of vnode._instance!._onMount) {
@@ -171,10 +188,11 @@ export function createRenderer(nodeOps: NodeOps) {
     })
   }
 
-  function mountElement(vnode: VNode, container: Container, refNode?: Container) {
-    const { data, childFlags, children } = vnode
-    const el = (vnode.el = nodeOps.createElement(vnode.type as string))
-
+  function mountElement(vnode: VNode, container: Container, isSVG: boolean, refNode?: Container) {
+    const { data, childFlags, children, type } = vnode
+    const el = (vnode.el = isSVG
+      ? nodeOps.createSvgElement(type as string)
+      : nodeOps.createElement(type as string))
     if (data.ref) {
       /**@ts-ignore */
       data.ref.value = el
@@ -190,7 +208,7 @@ export function createRenderer(nodeOps: NodeOps) {
     }
 
     /**mount children */
-    mountChildren(childFlags, children, vnode, el)
+    mountChildren(childFlags, children, vnode, el, isSVG)
   }
 
   function mountTextChild(vnode: VNode, container: Container, refNode?: Container) {
@@ -203,25 +221,24 @@ export function createRenderer(nodeOps: NodeOps) {
     }
   }
 
-  function mountFragment(vnode: VNode, container: Container, refNode?: Container) {
+  function mountFragment(vnode: VNode, container: Container, isSVG: boolean, refNode?: Container) {
     const { children } = vnode
     if (Array.isArray(children)) {
-      (children as VNode[]).forEach(c => mount(c, container, refNode))
-      vnode.el = (children as VNode[])[0].el
+      (children as VNode[]).forEach(c => mount(c, container, isSVG, refNode))
     } else if (children) {
-      mount(children as VNode, container, refNode)
-      vnode.el = (children as VNode).el
+      mount(children as VNode, container, isSVG, refNode)
     }
-  }
-
-  function mountMultipleChildren(parent: VNode, children: VNode[]) {
-    for (const child of children) {
-      mount(child, parent.el!)
+    const anchor = nodeOps.createComment("__FRAGMENT_END__")
+    vnode.el = anchor
+    if (refNode) {
+      nodeOps.insertBefore(container, anchor, refNode)
+    } else {
+      nodeOps.appendChild(container, anchor)
     }
   }
 
   function unmount(vnode: VNode, container: Container) {
-    const { flags, children } = vnode
+    const { flags, children, el } = vnode
     if (flags & VNodeFlags.Element || flags & VNodeFlags.Text) {
       nodeOps.removeChild(container, vnode.el!)
     } else if (flags & VNodeFlags.FC) {
@@ -232,6 +249,7 @@ export function createRenderer(nodeOps: NodeOps) {
       } else if (children) {
         unmount(children as VNode, container)
       }
+      nodeOps.removeChild(container, el)
     } else if (flags & VNodeFlags.Portal) {
       const el = vnode.el as Container
       unmount(vnode.children as VNode, el)
@@ -263,7 +281,9 @@ export function createRenderer(nodeOps: NodeOps) {
   function patch(
     newVNode: VNode | null | undefined,
     oldVNode: VNode | null | undefined,
-    container: Container
+    container: Container,
+    isSVG: boolean,
+    refNode?: Container
   ) {
     if (newVNode && oldVNode) {
       if (isSameVNode(newVNode, oldVNode)) {
@@ -273,17 +293,17 @@ export function createRenderer(nodeOps: NodeOps) {
         } else if (flags & VNodeFlags.Text) {
           patchTextVNode(newVNode, oldVNode)
         } else if (flags & VNodeFlags.Element) {
-          patchElement(newVNode, oldVNode)
+          patchElement(newVNode, oldVNode, isSVG)
         } else if (flags & VNodeFlags.Portal) {
           patchPortal(newVNode, oldVNode)
         } else {
-          patchFragment(newVNode, oldVNode, container)
+          patchFragment(newVNode, oldVNode, container, isSVG)
         }
       } else {
-        replaceVNode(newVNode, oldVNode, container)
+        replaceVNode(newVNode, oldVNode, container, isSVG)
       }
     } else if (newVNode) {
-      mount(newVNode, container)
+      mount(newVNode, container, isSVG, refNode)
     } else if (oldVNode) {
       unmount(oldVNode, container)
     }
@@ -308,7 +328,7 @@ export function createRenderer(nodeOps: NodeOps) {
     newVNode._instance!._update!()
   }
 
-  function patchElement(newVNode: VNode, oldVNode: VNode) {
+  function patchElement(newVNode: VNode, oldVNode: VNode, isSVG: boolean) {
     const el = (newVNode.el = oldVNode.el!)
     for (const key in newVNode.data) {
       nodeOps.patchData(el, key, newVNode.data[key], oldVNode.data[key], VNodeFlags.Element)
@@ -318,7 +338,7 @@ export function createRenderer(nodeOps: NodeOps) {
         nodeOps.patchData(el, key, null, oldVNode.data[key], VNodeFlags.Element)
       }
     }
-    patchChildren(newVNode, oldVNode)
+    patchChildren(newVNode, oldVNode, isSVG)
   }
 
   function patchTextVNode(newVNode: VNode, oldVNode: VNode) {
@@ -328,25 +348,27 @@ export function createRenderer(nodeOps: NodeOps) {
     }
   }
 
-  function patchFragment(newVNode: VNode, oldVNode: VNode, container: Container) {
-    patchChildren(newVNode, oldVNode, container)
+  function patchFragment(newVNode: VNode, oldVNode: VNode, container: Container, isSVG: boolean) {
+    const refNode = newVNode.el = oldVNode.el as Container
+    patchChildren(newVNode, oldVNode, isSVG, container, refNode)
   }
 
   function patchPortal(newVNode: VNode, oldVNode: VNode) {
-    const el = oldVNode.el!
-    patch(newVNode.children as VNode, oldVNode.children as VNode, el)
+    const el = newVNode.el = oldVNode.el!
+    patch(newVNode.children as VNode, oldVNode.children as VNode, el, false)
   }
 
-  function replaceVNode(newVNode: VNode, oldVNode: VNode, container: Container) {
-    container.removeChild(oldVNode.el!)
-    mount(newVNode, container)
+  function replaceVNode(newVNode: VNode, oldVNode: VNode, container: Container, isSVG: boolean) {
+    const refNode = oldVNode.el?.nextSibling as Container
+    unmount(oldVNode, container)
+    mount(newVNode, container, isSVG, refNode)
   }
 
   /**if the vnode is fragment, then it's el is the first child, it 
    * can't unmount correctly, so pass the really container if the
    * vnode is fragment
    */
-  function patchChildren(newVNode: VNode, oldVNode: VNode, container?: Container) {
+  function patchChildren(newVNode: VNode, oldVNode: VNode, isSVG: boolean, container?: Container, refNode?: Container) {
     const { childFlags: newFlag, children: newChildren } = newVNode
     const { childFlags: oldFlag, children: oldChildren } = oldVNode
 
@@ -363,32 +385,38 @@ export function createRenderer(nodeOps: NodeOps) {
       }
     } else if (newFlag & ChildrenFlags.Single) {
       if (oldFlag & ChildrenFlags.NoChildren) {
-        mount(newChildren as VNode, el!)
+        mount(newChildren as VNode, el!, isSVG, refNode)
       } else if (oldFlag & ChildrenFlags.Single) {
-        patch(newChildren as VNode, oldChildren as VNode, el!)
+        patch(newChildren as VNode, oldChildren as VNode, el!, isSVG, refNode)
       } else if (oldFlag & ChildrenFlags.Multiple) {
         for (const child of (oldChildren as VNode[])) {
           unmount(child, el!)
         }
-        mount(newChildren as VNode, el!)
+        mount(newChildren as VNode, el!, isSVG, refNode)
       }
     } else if (newFlag & ChildrenFlags.Multiple) {
       if (oldFlag & ChildrenFlags.NoChildren) {
         for (const child of (newChildren as VNode[])) {
-          mount(child, el!)
+          mount(child, el!, isSVG, refNode)
         }
       } else if (oldFlag & ChildrenFlags.Single) {
         unmount(oldChildren as VNode, el!)
         for (const child of (newChildren as VNode[])) {
-          mount(child, el!)
+          mount(child, el!, isSVG, refNode)
         }
       } else if (oldFlag & ChildrenFlags.Multiple) {
-        patchMultipleChildren(newChildren as VNode[], oldChildren as VNode[], el!)
+        patchMultipleChildren(newChildren as VNode[], oldChildren as VNode[], el!, isSVG, refNode)
       }
     }
   }
 
-  function patchMultipleChildren(nextChildren: VNode[], prevChildren: VNode[], container: Container) {
+  function patchMultipleChildren(
+    nextChildren: VNode[],
+    prevChildren: VNode[],
+    container: Container,
+    isSVG: boolean,
+    refNode?: Container
+  ) {
     let i = 0
     let nextEnd = nextChildren.length - 1
     let nextVNode = nextChildren[i]
@@ -400,7 +428,7 @@ export function createRenderer(nodeOps: NodeOps) {
         if (nextVNode.key !== prevVNode.key) {
           break
         }
-        patch(nextVNode, prevVNode, container)
+        patch(nextVNode, prevVNode, container, isSVG)
         i++
         if (i > nextEnd || i > prevEnd) {
           break outer
@@ -414,7 +442,7 @@ export function createRenderer(nodeOps: NodeOps) {
         if (nextVNode.key !== prevVNode.key) {
           break
         }
-        patch(nextVNode, prevVNode, container)
+        patch(nextVNode, prevVNode, container, isSVG)
         nextEnd--
         prevEnd--
         if (i > nextEnd || i > prevEnd) {
@@ -432,7 +460,7 @@ export function createRenderer(nodeOps: NodeOps) {
     } else if (i > prevEnd) {
       const refNode = prevEnd + 1 >= prevChildren.length ? undefined : prevChildren[prevEnd + 1].el!
       for (let j = i; j <= nextEnd; j++) {
-        mount(nextChildren[j], container, refNode)
+        mount(nextChildren[j], container, isSVG, refNode)
       }
     } else {
       let needMove = false
@@ -452,7 +480,7 @@ export function createRenderer(nodeOps: NodeOps) {
           const idx = indexMap[prevVNode.key]
           if (isDef(idx)) {
             nextVNode = nextChildren[idx + i]
-            patch(nextVNode, prevVNode, container)
+            patch(nextVNode, prevVNode, container, isSVG)
             patchedNum++
             source[idx] = j
             if (idx < pos) {
@@ -484,7 +512,7 @@ export function createRenderer(nodeOps: NodeOps) {
           nextVNode = nextChildren[j]
           if (source[j] === -1) {
             const refNode = j + 1 < nextChildren.length ? nextChildren[j + 1].el! : undefined
-            mount(nextVNode, container, refNode)
+            mount(nextVNode, container, isSVG, refNode)
           }
           if (j === seq[s]) { /** no need for moving */
             s--
@@ -497,8 +525,8 @@ export function createRenderer(nodeOps: NodeOps) {
         for (let j = nextEnd; j >= i; j--) {
           nextVNode = nextChildren[j]
           if (!prevKeyMap[nextVNode.key]) {
-            const refNode = j + 1 >= nextChildren.length ? undefined : nextChildren[j + 1].el!
-            mount(nextVNode, container, refNode)
+            const _refNode = j + 1 >= nextChildren.length ? undefined : nextChildren[j + 1].el!
+            mount(nextVNode, container, isSVG, _refNode || refNode)
           }
         }
       }
@@ -516,36 +544,8 @@ export function createRenderer(nodeOps: NodeOps) {
   }
 
   return function renderer(vnode: VNode, container: Container) {
+    const isSVG = !!(vnode.flags & VNodeFlags.Svg)
     const oldVNode = container.vnode
-    patch(vnode, oldVNode, container)
+    patch(vnode, oldVNode, container, isSVG)
   }
 }
-
-export const onMounted = (fn: () => any) => {
-  if (checkHookAvailable()) {
-    _currentMountingFC!._onMount.push(fn)
-  }
-}
-
-export const onUnmounted = (fn: () => any) => {
-  if (checkHookAvailable()) {
-    _currentMountingFC!._onUnmount.push(fn)
-  }
-}
-
-export const expose = (value: Record<any, any>) => {
-  if (checkHookAvailable()) {
-    _currentMountingFC!._props.ref && (_currentMountingFC!._props.ref!.value = value)
-  }
-}
-
-export const checkHookAvailable = () => {
-  if (!_currentMountingFC) {
-    /**@ts-ignore */
-    _warn("hook must be called inside a function component")
-    return false
-  }
-  return true
-}
-
-export const render = createRenderer(baseNodeOps)

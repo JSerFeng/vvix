@@ -89,7 +89,8 @@ export declare enum VNodeFlags {
     FC = 2,
     Text = /**          */ 4,
     Fragment = /**      */ 8,
-    Portal = /**        */ 16
+    Portal = /**        */ 16,
+    Svg = /**           */ 32
 }
 export declare enum ChildrenFlags {
     Multiple = 1,

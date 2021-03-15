@@ -94,7 +94,8 @@ export enum VNodeFlags {
   FC = /*             */ 0b00000010,
   Text = /**          */ 0b00000100,
   Fragment = /**      */ 0b00001000,
-  Portal = /**        */ 0b00010000
+  Portal = /**        */ 0b00010000,
+  Svg = /**           */ 0b00100000
 }
 
 export enum ChildrenFlags {
@@ -143,7 +144,11 @@ export class VNode {
         _onUnmount: []
       }
     } else if (typeof type === "string") {
-      this.flags = VNodeFlags.Element
+      if (type === "svg") {
+        this.flags = VNodeFlags.Svg
+      } else {
+        this.flags = VNodeFlags.Element
+      }
     } else if (type === Fragment) {
       this.flags = VNodeFlags.Fragment
     } else if (type === Portal) {
