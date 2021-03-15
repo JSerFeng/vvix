@@ -19,15 +19,11 @@ const tsPlugin = ts({
 
 export default {
   input: "./lib/index.ts",
-  output: [{
-    file: "./build/bundle.cjs.js",
-    format: "cjs",
-    name: "vvix",
-  }, {
+  output: {
     file: "./build/bundle.esm.js",
     format: "es",
     name: "vvix",
-  }],
+  },
   plugins: [
     resolve(),
     commonJsTransformer(),
@@ -35,5 +31,6 @@ export default {
     babel({
       "exclude": 'node_modules/**', // 只编译我们的源代码
     }),
+    terser()
   ]
 };

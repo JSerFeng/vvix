@@ -1,4 +1,4 @@
-import { _currentMountingFC } from "."
+import { _currentMountingFC } from "./render"
 
 export const checkHookAvailable = () => {
   if (!_currentMountingFC) {
