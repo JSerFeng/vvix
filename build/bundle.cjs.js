@@ -1,3 +1,7 @@
+'use strict';
+
+Object.defineProperty(exports, '__esModule', { value: true });
+
 const _warn$1 = (msg) => {
     console.warn(msg);
 };
@@ -62,7 +66,7 @@ const isDef = (value) => {
 };
 
 const effectStack = [];
-let activeEffect = null;
+exports.activeEffect = null;
 let pause = false;
 function effect(fn, option = {
     lazy: false,
@@ -79,10 +83,10 @@ function createEffect(fn, option) {
         if (reactiveEffect.active && !pause) {
             if (!effectStack.includes(effect)) {
                 effectStack.push(reactiveEffect);
-                activeEffect = effect;
+                exports.activeEffect = effect;
                 fn(...args);
                 effectStack.pop();
-                activeEffect = null;
+                exports.activeEffect = null;
             }
         }
     };
@@ -101,7 +105,7 @@ const trigger = (target, key) => {
     if (!deps)
         return;
     deps.forEach(effect => {
-        if (effect !== activeEffect) {
+        if (effect !== exports.activeEffect) {
             if (effect.scheduler) {
                 effect.scheduler(effect);
             }
@@ -113,7 +117,7 @@ const trigger = (target, key) => {
 };
 const targetMap = new WeakMap();
 const track = (target, key) => {
-    if (!activeEffect)
+    if (!exports.activeEffect)
         return;
     let depsMap = targetMap.get(target);
     if (!depsMap) {
@@ -123,9 +127,9 @@ const track = (target, key) => {
     if (!deps) {
         depsMap.set(key, deps = new Set());
     }
-    if (!deps.has(activeEffect)) {
-        deps.add(activeEffect);
-        activeEffect.deps.push(deps);
+    if (!deps.has(exports.activeEffect)) {
+        deps.add(exports.activeEffect);
+        exports.activeEffect.deps.push(deps);
     }
 };
 const stop = (effect) => {
@@ -223,7 +227,7 @@ function ref(value) {
     return new Ref(value);
 }
 
-var VNodeFlags;
+exports.VNodeFlags = void 0;
 (function (VNodeFlags) {
     VNodeFlags[VNodeFlags["Element"] = 1] = "Element";
     VNodeFlags[VNodeFlags["FC"] = 2] = "FC";
@@ -231,13 +235,13 @@ var VNodeFlags;
     VNodeFlags[VNodeFlags["Fragment"] = 8] = "Fragment";
     VNodeFlags[VNodeFlags["Portal"] = 16] = "Portal";
     VNodeFlags[VNodeFlags["Svg"] = 32] = "Svg";
-})(VNodeFlags || (VNodeFlags = {}));
-var ChildrenFlags;
+})(exports.VNodeFlags || (exports.VNodeFlags = {}));
+exports.ChildrenFlags = void 0;
 (function (ChildrenFlags) {
     ChildrenFlags[ChildrenFlags["Multiple"] = 1] = "Multiple";
     ChildrenFlags[ChildrenFlags["Single"] = 2] = "Single";
     ChildrenFlags[ChildrenFlags["NoChildren"] = 8] = "NoChildren";
-})(ChildrenFlags || (ChildrenFlags = {}));
+})(exports.ChildrenFlags || (exports.ChildrenFlags = {}));
 const Fragment = Symbol("Fragment");
 const Portal = Symbol("Portal");
 class VNode {
@@ -248,7 +252,7 @@ class VNode {
         this._instance = null;
         this.type = type;
         if (typeof type === "function") {
-            this.flags = VNodeFlags.FC;
+            this.flags = exports.VNodeFlags.FC;
             this._instance = {
                 _props: {
                     children: [],
@@ -264,20 +268,20 @@ class VNode {
         }
         else if (typeof type === "string") {
             if (type === "svg") {
-                this.flags = VNodeFlags.Svg;
+                this.flags = exports.VNodeFlags.Svg;
             }
             else {
-                this.flags = VNodeFlags.Element;
+                this.flags = exports.VNodeFlags.Element;
             }
         }
         else if (type === Fragment) {
-            this.flags = VNodeFlags.Fragment;
+            this.flags = exports.VNodeFlags.Fragment;
         }
         else if (type === Portal) {
-            this.flags = VNodeFlags.Portal;
+            this.flags = exports.VNodeFlags.Portal;
         }
         else {
-            this.flags = VNodeFlags.Text;
+            this.flags = exports.VNodeFlags.Text;
         }
         if (isDef(key)) {
             this.key = key;
@@ -301,26 +305,26 @@ class VNode {
                 }
                 return c;
             });
-            this.childFlags = ChildrenFlags.Multiple;
+            this.childFlags = exports.ChildrenFlags.Multiple;
         }
         else if (isObject(children)) {
             this.children = children;
-            this.childFlags = ChildrenFlags.Single;
+            this.childFlags = exports.ChildrenFlags.Single;
         }
         else if (isDef(children)) {
-            if (this.flags & VNodeFlags.Text) {
-                this.childFlags = ChildrenFlags.NoChildren;
+            if (this.flags & exports.VNodeFlags.Text) {
+                this.childFlags = exports.ChildrenFlags.NoChildren;
                 /**@ts-ignore */
                 this.children = children.toString();
             }
             else {
-                this.childFlags = ChildrenFlags.Single;
+                this.childFlags = exports.ChildrenFlags.Single;
                 /**@ts-ignore */
                 this.children = h(null, null, children.toString());
             }
         }
         else {
-            this.childFlags = ChildrenFlags.NoChildren;
+            this.childFlags = exports.ChildrenFlags.NoChildren;
             this.children = null;
         }
     }
@@ -406,7 +410,7 @@ const flushWork = () => {
 };
 
 const DomSpecialKeys = /\[A-Z]|^(?:value|checked|selected|muted)$/;
-let _currentMountingFC = null;
+exports._currentMountingFC = null;
 const baseNodeOps = {
     getElement(name) {
         return document.querySelector(name);
@@ -448,7 +452,7 @@ const baseNodeOps = {
     patchData(el, key, newVal, oldVal, vnodeFlags) {
         if (newVal === oldVal)
             return;
-        if (vnodeFlags && (vnodeFlags & VNodeFlags.Element) && (key === "children")) {
+        if (vnodeFlags && (vnodeFlags & exports.VNodeFlags.Element) && (key === "children")) {
             return;
         }
         switch (key) {
@@ -497,16 +501,16 @@ function createRenderer(nodeOps) {
         if (isUndef(vnode))
             return;
         const { flags } = vnode;
-        if (flags & VNodeFlags.FC) {
+        if (flags & exports.VNodeFlags.FC) {
             mountFC(vnode, container, isSVG, refNode);
         }
-        else if (flags & (VNodeFlags.Element | VNodeFlags.Svg)) {
+        else if (flags & (exports.VNodeFlags.Element | exports.VNodeFlags.Svg)) {
             mountElement(vnode, container, isSVG, refNode);
         }
-        else if (flags & VNodeFlags.Text) {
+        else if (flags & exports.VNodeFlags.Text) {
             mountTextChild(vnode, container, refNode);
         }
-        else if (flags & VNodeFlags.Portal) {
+        else if (flags & exports.VNodeFlags.Portal) {
             mountPortal(vnode);
         }
         else {
@@ -514,13 +518,13 @@ function createRenderer(nodeOps) {
         }
     }
     function mountChildren(childFlags, children, vnode, container, isSVG) {
-        if (childFlags & ChildrenFlags.NoChildren) {
+        if (childFlags & exports.ChildrenFlags.NoChildren) {
             return;
         }
-        if (childFlags & ChildrenFlags.Single) {
+        if (childFlags & exports.ChildrenFlags.Single) {
             mount(children, container, isSVG);
         }
-        else if (childFlags & ChildrenFlags.Multiple) {
+        else if (childFlags & exports.ChildrenFlags.Multiple) {
             const el = vnode.el;
             for (const child of children) {
                 mount(child, el, isSVG);
@@ -556,9 +560,9 @@ function createRenderer(nodeOps) {
                 }
             }
         };
-        _currentMountingFC = vnode._instance;
+        exports._currentMountingFC = vnode._instance;
         vnode._instance._render = type(vnode._instance._props);
-        _currentMountingFC = null;
+        exports._currentMountingFC = null;
         effect(() => {
             vnode._instance._update();
         }, {
@@ -575,7 +579,7 @@ function createRenderer(nodeOps) {
             data.ref.value = el;
         }
         for (const key in data) {
-            nodeOps.patchData(el, key, data[key], null, VNodeFlags.Element);
+            nodeOps.patchData(el, key, data[key], null, exports.VNodeFlags.Element);
         }
         if (refNode) {
             nodeOps.insertBefore(container, el, refNode);
@@ -615,13 +619,13 @@ function createRenderer(nodeOps) {
     }
     function unmount(vnode, container) {
         const { flags, children, el } = vnode;
-        if (flags & VNodeFlags.Element || flags & VNodeFlags.Text) {
+        if (flags & exports.VNodeFlags.Element || flags & exports.VNodeFlags.Text) {
             nodeOps.removeChild(container, vnode.el);
         }
-        else if (flags & VNodeFlags.FC) {
+        else if (flags & exports.VNodeFlags.FC) {
             unmountFC(vnode, container);
         }
-        else if (flags & VNodeFlags.Fragment) {
+        else if (flags & exports.VNodeFlags.Fragment) {
             if (Array.isArray(children)) {
                 children.forEach(c => unmount(c, container));
             }
@@ -630,7 +634,7 @@ function createRenderer(nodeOps) {
             }
             nodeOps.removeChild(container, el);
         }
-        else if (flags & VNodeFlags.Portal) {
+        else if (flags & exports.VNodeFlags.Portal) {
             const el = vnode.el;
             unmount(vnode.children, el);
         }
@@ -638,9 +642,9 @@ function createRenderer(nodeOps) {
     function unmountFC(vnode, container) {
         const { childFlags, children } = vnode;
         const el = vnode.el;
-        if (childFlags & ChildrenFlags.Multiple) {
+        if (childFlags & exports.ChildrenFlags.Multiple) {
             for (const child of children) {
-                if (child.flags & VNodeFlags.FC) {
+                if (child.flags & exports.VNodeFlags.FC) {
                     unmountFC(child, el);
                 }
             }
@@ -659,16 +663,16 @@ function createRenderer(nodeOps) {
         if (newVNode && oldVNode) {
             if (isSameVNode(newVNode, oldVNode)) {
                 const flags = newVNode.flags;
-                if (flags & VNodeFlags.FC) {
+                if (flags & exports.VNodeFlags.FC) {
                     patchFC(newVNode, oldVNode);
                 }
-                else if (flags & VNodeFlags.Text) {
+                else if (flags & exports.VNodeFlags.Text) {
                     patchTextVNode(newVNode, oldVNode);
                 }
-                else if (flags & VNodeFlags.Element) {
+                else if (flags & exports.VNodeFlags.Element) {
                     patchElement(newVNode, oldVNode, isSVG);
                 }
-                else if (flags & VNodeFlags.Portal) {
+                else if (flags & exports.VNodeFlags.Portal) {
                     patchPortal(newVNode, oldVNode);
                 }
                 else {
@@ -705,11 +709,11 @@ function createRenderer(nodeOps) {
     function patchElement(newVNode, oldVNode, isSVG) {
         const el = (newVNode.el = oldVNode.el);
         for (const key in newVNode.data) {
-            nodeOps.patchData(el, key, newVNode.data[key], oldVNode.data[key], VNodeFlags.Element);
+            nodeOps.patchData(el, key, newVNode.data[key], oldVNode.data[key], exports.VNodeFlags.Element);
         }
         for (const key in oldVNode.data) {
             if (!newVNode.data[key]) {
-                nodeOps.patchData(el, key, null, oldVNode.data[key], VNodeFlags.Element);
+                nodeOps.patchData(el, key, null, oldVNode.data[key], exports.VNodeFlags.Element);
             }
         }
         patchChildren(newVNode, oldVNode, isSVG);
@@ -742,43 +746,43 @@ function createRenderer(nodeOps) {
         const { childFlags: oldFlag, children: oldChildren } = oldVNode;
         /**el is string only when vnode is a portal */
         const el = container || oldVNode.el;
-        if (newFlag & ChildrenFlags.NoChildren) {
-            if (oldFlag & ChildrenFlags.Single) {
+        if (newFlag & exports.ChildrenFlags.NoChildren) {
+            if (oldFlag & exports.ChildrenFlags.Single) {
                 unmount(oldChildren, el);
             }
-            else if (oldFlag & ChildrenFlags.Multiple) {
+            else if (oldFlag & exports.ChildrenFlags.Multiple) {
                 for (const child of oldChildren) {
                     unmount(child, el);
                 }
             }
         }
-        else if (newFlag & ChildrenFlags.Single) {
-            if (oldFlag & ChildrenFlags.NoChildren) {
+        else if (newFlag & exports.ChildrenFlags.Single) {
+            if (oldFlag & exports.ChildrenFlags.NoChildren) {
                 mount(newChildren, el, isSVG, refNode);
             }
-            else if (oldFlag & ChildrenFlags.Single) {
+            else if (oldFlag & exports.ChildrenFlags.Single) {
                 patch(newChildren, oldChildren, el, isSVG, refNode);
             }
-            else if (oldFlag & ChildrenFlags.Multiple) {
+            else if (oldFlag & exports.ChildrenFlags.Multiple) {
                 for (const child of oldChildren) {
                     unmount(child, el);
                 }
                 mount(newChildren, el, isSVG, refNode);
             }
         }
-        else if (newFlag & ChildrenFlags.Multiple) {
-            if (oldFlag & ChildrenFlags.NoChildren) {
+        else if (newFlag & exports.ChildrenFlags.Multiple) {
+            if (oldFlag & exports.ChildrenFlags.NoChildren) {
                 for (const child of newChildren) {
                     mount(child, el, isSVG, refNode);
                 }
             }
-            else if (oldFlag & ChildrenFlags.Single) {
+            else if (oldFlag & exports.ChildrenFlags.Single) {
                 unmount(oldChildren, el);
                 for (const child of newChildren) {
                     mount(child, el, isSVG, refNode);
                 }
             }
-            else if (oldFlag & ChildrenFlags.Multiple) {
+            else if (oldFlag & exports.ChildrenFlags.Multiple) {
                 patchMultipleChildren(newChildren, oldChildren, el, isSVG, refNode);
             }
         }
@@ -912,14 +916,14 @@ function createRenderer(nodeOps) {
         return shallowEqual(propsA, propsB);
     }
     return function renderer(vnode, container) {
-        const isSVG = !!(vnode.flags & VNodeFlags.Svg);
+        const isSVG = !!(vnode.flags & exports.VNodeFlags.Svg);
         const oldVNode = container.vnode;
         patch(vnode, oldVNode, container, isSVG);
     };
 }
 
 const checkHookAvailable = () => {
-    if (!_currentMountingFC) {
+    if (!exports._currentMountingFC) {
         /**@ts-ignore */
         _warn("hook must be called inside a function component");
         return false;
@@ -928,17 +932,17 @@ const checkHookAvailable = () => {
 };
 const onMounted = (fn) => {
     if (checkHookAvailable()) {
-        _currentMountingFC._onMount.push(fn);
+        exports._currentMountingFC._onMount.push(fn);
     }
 };
 const onUnmounted = (fn) => {
     if (checkHookAvailable()) {
-        _currentMountingFC._onUnmount.push(fn);
+        exports._currentMountingFC._onUnmount.push(fn);
     }
 };
 const expose = (value) => {
     if (checkHookAvailable()) {
-        _currentMountingFC._props.ref && (_currentMountingFC._props.ref.value = value);
+        exports._currentMountingFC._props.ref && (exports._currentMountingFC._props.ref.value = value);
     }
 };
 
@@ -965,4 +969,40 @@ const createApp = (app, nodeOps) => {
     };
 };
 
-export { ChildrenFlags, Fragment, Portal, Ref, VNode, VNodeFlags, _currentMountingFC, _err, _warn$1 as _warn, activeEffect, baseNodeOps, checkHookAvailable, createApp, createEffect, createPortal, createRenderer, effect, effectStack, expose, h, isArray, isDef, isObject, isRef, isSameVNode, isUndef, jsx, jsxs, lis, markRaw, onMounted, onUnmounted, pauseTracking, reactive, ref, resetTracking, shallowEqual, stop, toRaw, track, trigger };
+exports.Fragment = Fragment;
+exports.Portal = Portal;
+exports.Ref = Ref;
+exports.VNode = VNode;
+exports._err = _err;
+exports._warn = _warn$1;
+exports.baseNodeOps = baseNodeOps;
+exports.checkHookAvailable = checkHookAvailable;
+exports.createApp = createApp;
+exports.createEffect = createEffect;
+exports.createPortal = createPortal;
+exports.createRenderer = createRenderer;
+exports.effect = effect;
+exports.effectStack = effectStack;
+exports.expose = expose;
+exports.h = h;
+exports.isArray = isArray;
+exports.isDef = isDef;
+exports.isObject = isObject;
+exports.isRef = isRef;
+exports.isSameVNode = isSameVNode;
+exports.isUndef = isUndef;
+exports.jsx = jsx;
+exports.jsxs = jsxs;
+exports.lis = lis;
+exports.markRaw = markRaw;
+exports.onMounted = onMounted;
+exports.onUnmounted = onUnmounted;
+exports.pauseTracking = pauseTracking;
+exports.reactive = reactive;
+exports.ref = ref;
+exports.resetTracking = resetTracking;
+exports.shallowEqual = shallowEqual;
+exports.stop = stop;
+exports.toRaw = toRaw;
+exports.track = track;
+exports.trigger = trigger;
