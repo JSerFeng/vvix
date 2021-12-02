@@ -118,7 +118,7 @@ const MsgItem = () => {
 
 portal(mount the component on another dom)
 
-[demo 地址](https://codesandbox.io/s/eloquent-easley-us90x?file=/src/Modal.tsx:0-271)
+[demo 地址](https://codesandbox.io/s/vvix-17i7o?file=/src/modal.tsx)
 
 ```
 import { createPortal } from "vvix";
@@ -137,6 +137,8 @@ const App = () => {
   );
 };
 ```
+
+Full demo, please check
 
 [demo](https://codesandbox.io/s/eloquent-easley-us90x?file=/src/App.tsx)
 
