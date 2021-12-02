@@ -1,14 +1,21 @@
-# vvix-cli
-
-## 请不要在真实开发下使用 vvix，还未稳定 !!!!!!!!!!!!!!!!!!!!!!!!!
-
-## 如果你实在喜欢这种写法，请使用[Vue3](https://github.com/vuejs/vue-next) !!!!!!!!!!!!!!!!!!!!!!!!!
+# vvix
 
 ## DO NOT USE IN REAL PRODUCT, IT'S STILL NOT STABLE!!!!!!!!!!!!!!!!!!!!
 
 ## If you really like this style, please use [Vue3](https://github.com/vuejs/vue-next) !!!!!!!!!!!!!!
 
-##
+vvix brings you:
+
+- ts support
+- most of "vue" reactive apis
+- reactive react, jsx in vue
+- more efficient diff algorithm than react
+
+Welcome your PR, issue and Star ^\_^
+
+## 请不要在真实开发下使用 vvix，还未稳定 !!!!!!!!!!!!!!!!!!!!!!!!!
+
+## 如果你实在喜欢这种写法，请使用[Vue3](https://github.com/vuejs/vue-next) !!!!!!!!!!!!!!!!!!!!!!!!!
 
 轻量级玩具 响应式 JSX/TSX 框架
 
@@ -18,13 +25,6 @@ vvix 可以让你使用：
 - vue 响应式 api 大部分支持
 - 更加 vue 的 react，更加 react 的 vue
 - 和 vue3 类似的 diff 算法
-
-vvix brings you:
-
-- ts support
-- most of "vue" reactive apis
-- reactive react, jsx in vue
-- more efficient diff algorithm than react
 
 ## 使用/Usage:
 
@@ -203,7 +203,5 @@ const Parent = () => {
 ```
 
 作者大学生佛系更新，欢迎提出好的 PR/issue 和 star ^\_^
-
-I won't guarantee when will it be finished, welcome you PR, issue and Star ^\_^
 
 github: https://github.com/JSerFeng/vvix
