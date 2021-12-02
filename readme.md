@@ -32,7 +32,7 @@ vvix 可以让你使用：
 
 render App on the dom whose id is "root"
 
-[demo 地址](https://codesandbox.io/s/eloquent-easley-us90x?file=/src/App.tsx)
+[demo 地址](https://codesandbox.io/s/vvix-17i7o?file=/src/App.tsx)
 
 ```
 import {createApp} from 'vvix'
@@ -47,7 +47,7 @@ createApp(<App />).mount("#root")
 
 Simple counter demo
 
-[demo 地址](https://codesandbox.io/s/eloquent-easley-us90x?file=/src/Counter.tsx)
+[demo 地址](https://codesandbox.io/s/vvix-17i7o?file=/src/Counter.tsx)
 
 ```
 const Counter = () => {
@@ -67,7 +67,7 @@ createApp(<Counter />).mount("#app")
 
 parent and child components
 
-[demo 地址](https://codesandbox.io/s/eloquent-easley-us90x?file=/src/MsgItem.tsx:49-166)
+[demo 地址](https://codesandbox.io/s/vvix-17i7o?file=/src/MsgItem.tsx)
 
 ```
 interface Props {
